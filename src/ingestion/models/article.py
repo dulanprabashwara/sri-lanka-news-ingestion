@@ -79,7 +79,7 @@ class ExtractedArticle(IngestionModel):
     original_language: Language
     published_at: datetime
     discovered_at: datetime
-    article_text: str = Field(min_length=1)
+    article_text: str = Field(min_length=1, max_length=500_000)
     category: ArticleCategory | None = None
     image: ImageMetadata | None = None
 

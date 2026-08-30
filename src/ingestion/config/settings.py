@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AnyHttpUrl, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        validate_default=True,
     )
 
     http_timeout_seconds: float = Field(default=15.0, gt=0, le=120)
@@ -24,3 +25,9 @@ class Settings(BaseSettings):
         min_length=10,
     )
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    backend_base_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8080")
+    api_key: SecretStr
+    daily_mirror_feed_url: AnyHttpUrl = AnyHttpUrl(
+        "https://www.dailymirror.lk/rss/breaking_news/108"
+    )
+    run_limit: int = Field(default=3, ge=1, le=20)

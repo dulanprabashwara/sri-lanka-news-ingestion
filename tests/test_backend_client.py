@@ -1,0 +1,119 @@
+import json
+from datetime import UTC, datetime
+
+import httpx
+import pytest
+
+from ingestion.backend import (
+    BackendIngestionClient,
+    BackendServiceError,
+    BackendUnavailableError,
+    BackendValidationError,
+    SubmissionStatus,
+)
+from ingestion.config import Settings
+from ingestion.models import ImageMetadata, Language, NormalizedArticle
+
+
+def settings() -> Settings:
+    return Settings.model_validate(
+        {
+            "api_key": "shared-test-secret",
+            "backend_base_url": "http://backend.test:8080",
+            "http_user_agent": "SriLankaNewsIngestion/Test",
+        }
+    )
+
+
+def article() -> NormalizedArticle:
+    return NormalizedArticle.model_validate(
+        {
+            "source_slug": "daily-mirror",
+            "title": "Fixture story",
+            "original_url": "https://www.dailymirror.lk/story?utm_source=rss",
+            "canonical_url": "https://www.dailymirror.lk/story",
+            "original_language": Language.ENGLISH,
+            "authors": ("DM Editorial",),
+            "published_at": datetime(2026, 8, 30, 5, 0, tzinfo=UTC),
+            "discovered_at": datetime(2026, 8, 30, 5, 1, tzinfo=UTC),
+            "article_text": "Internal extraction text",
+            "image": ImageMetadata.model_validate({"url": "https://cdn.example.com/image.jpg"}),
+        }
+    )
+
+
+def test_submits_extracted_content_with_shared_key_but_not_image() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read())
+        assert request.headers["x-ingestion-api-key"] == "shared-test-secret"
+        assert request.url.path == "/api/internal/v1/articles"
+        assert payload["extractedContent"] == "Internal extraction text"
+        assert "articleText" not in payload
+        assert "image" not in payload
+        return httpx.Response(
+            201,
+            json={
+                "status": "CREATED",
+                "articleId": "article-1",
+                "canonicalUrl": "https://www.dailymirror.lk/story",
+            },
+        )
+
+    with BackendIngestionClient(
+        settings(),
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        result = client.submit(article())
+
+    assert result.status is SubmissionStatus.CREATED
+    assert result.article_id == "article-1"
+
+
+def test_handles_duplicate_response() -> None:
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            json={
+                "status": "DUPLICATE",
+                "articleId": "article-1",
+                "canonicalUrl": "https://www.dailymirror.lk/story",
+            },
+        )
+    )
+    with BackendIngestionClient(settings(), transport=transport) as client:
+        result = client.submit(article())
+    assert result.status is SubmissionStatus.DUPLICATE
+
+
+def test_maps_backend_validation_and_service_failures() -> None:
+    validation_transport = httpx.MockTransport(
+        lambda _request: httpx.Response(400, json={"message": "Request validation failed."})
+    )
+    with (
+        BackendIngestionClient(settings(), transport=validation_transport) as client,
+        pytest.raises(BackendValidationError, match="validation failed"),
+    ):
+        client.submit(article())
+
+    service_transport = httpx.MockTransport(
+        lambda _request: httpx.Response(503, json={"message": "Service unavailable."})
+    )
+    with (
+        BackendIngestionClient(settings(), transport=service_transport) as client,
+        pytest.raises(BackendServiceError, match="Service unavailable"),
+    ):
+        client.submit(article())
+
+
+def test_maps_backend_network_failure() -> None:
+    def unavailable(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline", request=request)
+
+    with (
+        BackendIngestionClient(
+            settings(),
+            transport=httpx.MockTransport(unavailable),
+        ) as client,
+        pytest.raises(BackendUnavailableError),
+    ):
+        client.submit(article())

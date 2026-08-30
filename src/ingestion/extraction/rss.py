@@ -1,5 +1,6 @@
 import calendar
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
+from email.utils import parsedate_to_datetime
 from time import struct_time
 from typing import Any
 
@@ -14,7 +15,33 @@ class RssParseError(ValueError):
     """Raised when a feed cannot provide any usable discovery entries."""
 
 
-def _entry_datetime(value: Any) -> datetime | None:
+def _raw_entry_datetime(value: Any, default_timezone: tzinfo | None) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    raw_value = value.strip()
+    try:
+        parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(raw_value)
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        if default_timezone is None:
+            return None
+        parsed = parsed.replace(tzinfo=default_timezone)
+    return parsed.astimezone(UTC)
+
+
+def _entry_datetime(
+    value: Any,
+    *,
+    raw_value: Any,
+    default_timezone: tzinfo | None,
+) -> datetime | None:
+    parsed_raw = _raw_entry_datetime(raw_value, default_timezone)
+    if parsed_raw is not None:
+        return parsed_raw
     if not isinstance(value, struct_time):
         return None
     return datetime.fromtimestamp(calendar.timegm(value), tz=UTC)
@@ -26,6 +53,7 @@ def parse_feed(
     source_slug: str,
     discovered_at: datetime,
     base_url: str | None = None,
+    default_timezone: tzinfo | None = None,
 ) -> tuple[DiscoveryCandidate, ...]:
     """Parse valid RSS/Atom entries without applying publisher-specific rules."""
 
@@ -52,7 +80,11 @@ def parse_feed(
             if isinstance(raw_external_id, str) and raw_external_id.strip()
             else None
         )
-        published_at = _entry_datetime(entry.get("published_parsed") or entry.get("updated_parsed"))
+        published_at = _entry_datetime(
+            entry.get("published_parsed") or entry.get("updated_parsed"),
+            raw_value=entry.get("published") or entry.get("updated"),
+            default_timezone=default_timezone,
+        )
 
         try:
             candidate = DiscoveryCandidate.model_validate(

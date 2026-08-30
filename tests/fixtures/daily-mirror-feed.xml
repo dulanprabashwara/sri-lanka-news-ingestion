@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Daily Mirror Breaking News</title>
+    <link>https://www.dailymirror.lk/</link>
+    <description>Representative offline Daily Mirror RSS fixture</description>
+    <item>
+      <title><![CDATA[Fixture prices remain stable]]></title>
+      <link>https://www.dailymirror.lk/breaking-news/Fixture-prices-remain-stable/108-123456</link>
+      <guid>https://www.dailymirror.lk/breaking-news/Fixture-prices-remain-stable/108-123456</guid>
+      <pubDate>2026-08-30 10:49:00</pubDate>
+      <description><![CDATA[Representative fixture description.]]></description>
+    </item>
+    <item>
+      <title><![CDATA[Second fixture headline]]></title>
+      <link>https://www.dailymirror.lk/breaking-news/Second-fixture-headline/108-123457</link>
+      <guid>https://www.dailymirror.lk/breaking-news/Second-fixture-headline/108-123457</guid>
+      <pubDate>2026-08-30 10:30:00</pubDate>
+    </item>
+  </channel>
+</rss>

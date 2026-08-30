@@ -1,5 +1,6 @@
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from ingestion.config import Settings
 from ingestion.http import (
@@ -16,6 +17,7 @@ def settings() -> Settings:
         http_timeout_seconds=2,
         http_max_redirects=2,
         http_user_agent="SriLankaNewsIngestion/Test",
+        api_key=SecretStr("test-secret"),
     )
 
 
