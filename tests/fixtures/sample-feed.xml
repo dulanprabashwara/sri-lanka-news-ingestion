@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Fixture News</title>
+    <link>https://news.example.com/</link>
+    <description>Offline RSS fixture</description>
+    <item>
+      <title> First fixture headline </title>
+      <link>https://news.example.com/articles/first?story=1&amp;utm_source=rss</link>
+      <guid>fixture-1</guid>
+      <pubDate>Sun, 30 Aug 2026 05:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Duplicate fixture headline</title>
+      <link>https://news.example.com/articles/first?story=1&amp;fbclid=duplicate</link>
+      <guid>fixture-duplicate</guid>
+    </item>
+    <item>
+      <title>Second fixture headline</title>
+      <link>/articles/second#comments</link>
+      <guid>fixture-2</guid>
+      <pubDate>Sun, 30 Aug 2026 06:30:00 +0530</pubDate>
+    </item>
+    <item>
+      <title>Missing URL is ignored</title>
+    </item>
+  </channel>
+</rss>
