@@ -9,6 +9,7 @@ from ingestion.backend import (
     BackendServiceError,
     BackendUnavailableError,
     BackendValidationError,
+    DuplicateReason,
     SubmissionStatus,
 )
 from ingestion.config import Settings
@@ -77,12 +78,14 @@ def test_handles_duplicate_response() -> None:
                 "status": "DUPLICATE",
                 "articleId": "article-1",
                 "canonicalUrl": "https://www.dailymirror.lk/story",
+                "duplicateReason": "CONTENT_DUPLICATE",
             },
         )
     )
     with BackendIngestionClient(settings(), transport=transport) as client:
         result = client.submit(article())
     assert result.status is SubmissionStatus.DUPLICATE
+    assert result.duplicate_reason is DuplicateReason.CONTENT_DUPLICATE
 
 
 def test_submits_sinhala_unicode_for_ada_derana() -> None:

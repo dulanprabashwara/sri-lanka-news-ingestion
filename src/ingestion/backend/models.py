@@ -8,6 +8,11 @@ class SubmissionStatus(StrEnum):
     DUPLICATE = "DUPLICATE"
 
 
+class DuplicateReason(StrEnum):
+    URL_DUPLICATE = "URL_DUPLICATE"
+    CONTENT_DUPLICATE = "CONTENT_DUPLICATE"
+
+
 class SubmissionResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -16,4 +21,9 @@ class SubmissionResult(BaseModel):
     canonical_url: AnyHttpUrl = Field(
         validation_alias="canonicalUrl",
         serialization_alias="canonicalUrl",
+    )
+    duplicate_reason: DuplicateReason | None = Field(
+        default=None,
+        validation_alias="duplicateReason",
+        serialization_alias="duplicateReason",
     )

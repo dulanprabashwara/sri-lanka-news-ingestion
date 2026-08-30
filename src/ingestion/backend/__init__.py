@@ -9,7 +9,7 @@ from ingestion.backend.errors import (
     BackendUnavailableError,
     BackendValidationError,
 )
-from ingestion.backend.models import SubmissionResult, SubmissionStatus
+from ingestion.backend.models import DuplicateReason, SubmissionResult, SubmissionStatus
 
 __all__ = [
     "BackendAuthenticationError",
@@ -19,6 +19,7 @@ __all__ = [
     "BackendServiceError",
     "BackendUnavailableError",
     "BackendValidationError",
+    "DuplicateReason",
     "SubmissionResult",
     "SubmissionStatus",
 ]
