@@ -4,9 +4,9 @@ Publisher-agnostic Python foundation for discovering, extracting, and
 normalizing Sri Lankan news articles before they are submitted to the platform
 backend.
 
-Phase 6 implements Daily Mirror as the first real publisher and submits
-normalized article data to the Spring Boot internal ingestion API. Python
-still owns no persistence.
+Phase 7 live sources are Daily Mirror, NewsFirst English, and Hiru News Sinhala.
+Every publisher submits normalized article data through the same Spring Boot
+internal ingestion API; Python still owns no persistence.
 
 ## Requirements
 
@@ -38,14 +38,16 @@ Start the backend against Atlas before running one controlled ingestion:
 ingest-daily-mirror
 ```
 
-The default run processes at most three feed entries sequentially. It logs a
+Run each supported source independently with `ingest-daily-mirror`,
+`ingest-newsfirst`, or `ingest-hiru-news-sinhala`. The default run
+processes at most three entries sequentially. It logs a
 concise created/duplicate/failed summary and has no scheduler.
 
 ## Architecture
 
 - `src/ingestion/config` validates `INGESTION_*` environment settings.
-- `src/ingestion/sources` defines the contract for future publisher adapters.
-  `DailyMirrorAdapter` contains all Daily Mirror feed, JSON-LD, and CSS rules.
+- `src/ingestion/sources` defines the shared adapter contract. Each supported
+  publisher keeps its own discovery URL, selectors, date rules, and quirks.
 - `src/ingestion/models` contains immutable discovery, extraction, and
   normalized article models.
 - `src/ingestion/http` owns bounded HTTP requests and domain errors.
@@ -59,11 +61,14 @@ concise created/duplicate/failed summary and has no scheduler.
 - `src/ingestion/runner.py` performs one bounded sequential ingestion run.
 - `tests/fixtures` contains local RSS and HTML samples; tests use no internet.
 
-Daily Mirror discovery uses its official Breaking News RSS feed. Article pages
-prefer `NewsArticle` JSON-LD for headline, body, author, publication time, and
-image, with Daily Mirror-specific HTML fallbacks. Cleaned extracted article
-content is submitted for internal backend persistence but is never part of the
-public Article API. Image metadata remains local to Python.
+Daily Mirror uses official RSS discovery. NewsFirst and Hiru News use their
+public latest-news HTML listings. Ada Derana Sinhala support remains in the
+codebase but is not an active Phase 7 source because both its RSS and homepage
+return publisher/CDN HTTP 403 responses from the development environment; its
+backend source registration is disabled.
+Article adapters prefer structured metadata where available and retain
+publisher-specific HTML fallbacks. Publisher-local timestamps are normalized
+to UTC. Cleaned extracted content remains internal-only in the backend.
 
 ## Checks
 
@@ -80,11 +85,13 @@ To apply formatting locally:
 python -m ruff format .
 ```
 
-## Phase 6 boundaries
+## Phase 7 boundaries
 
 Included:
 
-- Daily Mirror RSS discovery and article extraction
+- Daily Mirror, NewsFirst English, and Hiru News Sinhala live adapters
+- Retained but disabled Ada Derana Sinhala adapter
+- RSS and conservative latest-listing discovery
 - Validated normalization and conservative canonicalization
 - Shared-secret backend submission client
 - One-time bounded CLI run
@@ -92,10 +99,10 @@ Included:
 
 Not included:
 
-- Additional publishers
+- Additional active publishers beyond the three verified sources
 - Browser automation or Playwright
 - MongoDB or other persistence
 - Scheduling, retries, queues, Redis, authentication, AI, summaries,
   translations, embeddings, topic/entity extraction, or story clustering
 
-Phase 7 — Second and Third Sources has not been started.
+Scheduling remains a future phase.

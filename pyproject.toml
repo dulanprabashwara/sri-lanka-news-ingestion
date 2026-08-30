@@ -17,6 +17,9 @@ dependencies = [
 
 [project.scripts]
 ingest-daily-mirror = "ingestion.cli:main"
+ingest-newsfirst = "ingestion.cli:main_newsfirst"
+ingest-hiru-news-sinhala = "ingestion.cli:main_hiru_news_sinhala"
+ingest-ada-derana-sinhala = "ingestion.cli:main_ada_derana_sinhala"
 
 [project.optional-dependencies]
 dev = [

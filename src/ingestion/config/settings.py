@@ -30,4 +30,8 @@ class Settings(BaseSettings):
     daily_mirror_feed_url: AnyHttpUrl = AnyHttpUrl(
         "https://www.dailymirror.lk/rss/breaking_news/108"
     )
+    newsfirst_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.newsfirst.lk/latest")
+    hiru_news_sinhala_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.hirunews.lk/")
+    ada_derana_sinhala_feed_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/rss.php")
+    ada_derana_sinhala_homepage_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/")
     run_limit: int = Field(default=3, ge=1, le=20)

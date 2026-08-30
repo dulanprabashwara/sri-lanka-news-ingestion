@@ -70,6 +70,23 @@ class FailedDiscoveryAdapter(FixtureAdapter):
         raise RssParseError("fixture feed failure")
 
 
+class IdempotentSubmitter:
+    def __init__(self) -> None:
+        self.seen: set[str] = set()
+
+    def submit(self, article: NormalizedArticle) -> SubmissionResult:
+        canonical_url = str(article.canonical_url)
+        status = "DUPLICATE" if canonical_url in self.seen else "CREATED"
+        self.seen.add(canonical_url)
+        return SubmissionResult.model_validate(
+            {
+                "status": status,
+                "articleId": canonical_url,
+                "canonicalUrl": canonical_url,
+            }
+        )
+
+
 def test_one_run_reports_created_duplicates_and_failures() -> None:
     summary = run_once(FixtureAdapter(), FixtureSubmitter(), limit=3)
 
@@ -97,3 +114,15 @@ def test_one_run_reports_discovery_failure_without_submissions() -> None:
     assert summary.discovered == 0
     assert summary.processed == 0
     assert submitter.calls == 0
+
+
+def test_repeated_run_reports_duplicates_for_same_canonical_urls() -> None:
+    submitter = IdempotentSubmitter()
+
+    first = run_once(FixtureAdapter(), submitter, limit=2)
+    second = run_once(FixtureAdapter(), submitter, limit=2)
+
+    assert first.created == 2
+    assert first.duplicates == 0
+    assert second.created == 0
+    assert second.duplicates == 2

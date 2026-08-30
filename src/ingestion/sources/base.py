@@ -4,6 +4,10 @@ from collections.abc import Sequence
 from ingestion.models import DiscoveryCandidate, ExtractedArticle, NormalizedArticle
 
 
+class PublisherExtractionError(ValueError):
+    """Raised when publisher markup cannot provide a valid article."""
+
+
 class SourceAdapter(ABC):
     """Publisher adapter contract; implementations arrive with source pipelines."""
 

@@ -85,6 +85,37 @@ def test_handles_duplicate_response() -> None:
     assert result.status is SubmissionStatus.DUPLICATE
 
 
+def test_submits_sinhala_unicode_for_ada_derana() -> None:
+    sinhala = article().model_copy(
+        update={
+            "source_slug": "ada-derana-sinhala",
+            "title": "ශ්‍රී ලංකාවේ පුවත",
+            "original_language": Language.SINHALA,
+            "article_text": "සිංහල අන්තර්ගතය",
+        }
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read())
+        assert payload["sourceSlug"] == "ada-derana-sinhala"
+        assert payload["originalLanguage"] == "si"
+        assert payload["title"] == "ශ්‍රී ලංකාවේ පුවත"
+        assert payload["extractedContent"] == "සිංහල අන්තර්ගතය"
+        return httpx.Response(
+            200,
+            json={
+                "status": "DUPLICATE",
+                "articleId": "article-si",
+                "canonicalUrl": str(sinhala.canonical_url),
+            },
+        )
+
+    with BackendIngestionClient(settings(), transport=httpx.MockTransport(handler)) as client:
+        result = client.submit(sinhala)
+
+    assert result.status is SubmissionStatus.DUPLICATE
+
+
 def test_maps_backend_validation_and_service_failures() -> None:
     validation_transport = httpx.MockTransport(
         lambda _request: httpx.Response(400, json={"message": "Request validation failed."})

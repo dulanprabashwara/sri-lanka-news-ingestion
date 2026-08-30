@@ -8,7 +8,7 @@ from ingestion.backend import BackendClientError, SubmissionResult, SubmissionSt
 from ingestion.extraction import RssParseError
 from ingestion.http import FetchError
 from ingestion.models import NormalizedArticle
-from ingestion.sources import DailyMirrorExtractionError, SourceAdapter
+from ingestion.sources import PublisherExtractionError, SourceAdapter
 
 
 class ArticleSubmitter(Protocol):
@@ -34,7 +34,7 @@ def run_once(
     run_logger = logger or logging.getLogger(__name__)
     try:
         candidates = tuple(adapter.discover_recent())
-    except (FetchError, RssParseError) as error:
+    except (FetchError, PublisherExtractionError, RssParseError) as error:
         run_logger.warning(
             "discovery_failed source=%s error=%s",
             adapter.source_slug,
@@ -68,7 +68,7 @@ def run_once(
             )
         except (
             BackendClientError,
-            DailyMirrorExtractionError,
+            PublisherExtractionError,
             FetchError,
             ValidationError,
         ) as error:

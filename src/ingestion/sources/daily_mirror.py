@@ -25,10 +25,10 @@ from ingestion.models import (
     NormalizedArticle,
 )
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
-from ingestion.sources.base import SourceAdapter
+from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 
 
-class DailyMirrorExtractionError(ValueError):
+class DailyMirrorExtractionError(PublisherExtractionError):
     """Raised when Daily Mirror markup lacks required article data."""
 
 
