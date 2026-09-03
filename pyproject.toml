@@ -21,8 +21,10 @@ ingest-daily-mirror = "ingestion.cli:main"
 ingest-newsfirst = "ingestion.cli:main_newsfirst"
 ingest-hiru-news-sinhala = "ingestion.cli:main_hiru_news_sinhala"
 ingest-ada-derana-sinhala = "ingestion.cli:main_ada_derana_sinhala"
+ingest-the-island = "ingestion.cli:main_the_island"
+ingest-divaina = "ingestion.cli:main_divaina"
+ingest-lankadeepa = "ingestion.cli:main_lankadeepa"
 ingest-scheduler = "ingestion.cli:main_scheduler"
-
 [project.optional-dependencies]
 dev = [
     "mypy>=1.17,<2",

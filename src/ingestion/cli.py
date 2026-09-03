@@ -11,6 +11,9 @@ from ingestion.sources import (
     HiruNewsSinhalaAdapter,
     NewsFirstAdapter,
     SourceAdapter,
+    TheIslandAdapter,
+    DivainaAdapter,
+    LankadeepaAdapter,
 )
 
 
@@ -30,6 +33,12 @@ def _adapter(source_slug: str, fetcher: HttpFetcher, settings: Settings) -> Sour
             feed_url=str(settings.ada_derana_sinhala_feed_url),
             homepage_url=str(settings.ada_derana_sinhala_homepage_url),
         )
+    if source_slug == "the-island":
+        return TheIslandAdapter(fetcher, feed_url=str(settings.the_island_feed_url))
+    if source_slug == "divaina":
+        return DivainaAdapter(fetcher, feed_url=str(settings.divaina_feed_url))
+    if source_slug == "lankadeepa":
+        return LankadeepaAdapter(fetcher, homepage_url=str(settings.lankadeepa_listing_url))
     raise ValueError(f"Unsupported source: {source_slug}")
 
 
@@ -76,6 +85,18 @@ def main_hiru_news_sinhala() -> int:
 
 def main_ada_derana_sinhala() -> int:
     return _run("ada-derana-sinhala")
+
+
+def main_the_island() -> int:
+    return _run("the-island")
+
+
+def main_divaina() -> int:
+    return _run("divaina")
+
+
+def main_lankadeepa() -> int:
+    return _run("lankadeepa")
 
 
 def main_scheduler() -> int:

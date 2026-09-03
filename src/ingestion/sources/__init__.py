@@ -12,6 +12,10 @@ from ingestion.sources.hiru_news_sinhala import (
 )
 from ingestion.sources.newsfirst import NewsFirstAdapter, NewsFirstExtractionError
 
+from ingestion.sources.the_island import TheIslandAdapter, TheIslandExtractionError
+from ingestion.sources.divaina import DivainaAdapter, DivainaExtractionError
+from ingestion.sources.lankadeepa import LankadeepaAdapter, LankadeepaExtractionError
+
 __all__ = [
     "AdaDeranaSinhalaAdapter",
     "AdaDeranaSinhalaExtractionError",
@@ -23,4 +27,10 @@ __all__ = [
     "NewsFirstExtractionError",
     "PublisherExtractionError",
     "SourceAdapter",
+    "TheIslandAdapter",
+    "TheIslandExtractionError",
+    "DivainaAdapter",
+    "DivainaExtractionError",
+    "LankadeepaAdapter",
+    "LankadeepaExtractionError",
 ]

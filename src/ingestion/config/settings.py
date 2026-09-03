@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     hiru_news_sinhala_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.hirunews.lk/")
     ada_derana_sinhala_feed_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/rss.php")
     ada_derana_sinhala_homepage_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/")
+    the_island_feed_url: AnyHttpUrl = AnyHttpUrl("http://island.lk/feed/")
+    divaina_feed_url: AnyHttpUrl = AnyHttpUrl("https://www.divaina.lk/feed")
+    lankadeepa_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.lankadeepa.lk/latest-news/1")
     run_limit: int = Field(default=3, ge=1, le=20)
     scheduler_enabled: bool = False
     scheduler_interval_minutes: int = Field(default=10, ge=5)
