@@ -14,6 +14,10 @@ class BackendValidationError(BackendClientError):
     """Raised when the backend rejects a normalized article payload."""
 
 
+class BackendNotFoundError(BackendClientError):
+    """Raised when the backend cannot find the requested resource (404)."""
+
+
 class BackendServiceError(BackendClientError):
     """Raised for backend failures that are not validation or authentication."""
 

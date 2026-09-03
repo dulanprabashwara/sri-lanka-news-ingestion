@@ -1,4 +1,5 @@
 import logging
+import threading
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -30,6 +31,7 @@ def run_once(
     *,
     limit: int,
     logger: logging.Logger | None = None,
+    abort_event: threading.Event | None = None,
 ) -> RunSummary:
     run_logger = logger or logging.getLogger(__name__)
     try:
@@ -52,6 +54,10 @@ def run_once(
     failed = 0
 
     for candidate in candidates[:limit]:
+        if abort_event is not None and abort_event.is_set():
+            run_logger.warning("run_aborted source=%s url=%s", adapter.source_slug, candidate.url)
+            break
+
         try:
             extracted = adapter.extract_article(candidate)
             normalized = adapter.normalize(extracted)

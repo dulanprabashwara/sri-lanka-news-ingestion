@@ -13,6 +13,7 @@ dependencies = [
     "feedparser>=6.0.11,<7",
     "httpx>=0.28,<1",
     "pydantic-settings>=2.10,<3",
+    "apscheduler>=3.10,<4",
 ]
 
 [project.scripts]
@@ -20,6 +21,7 @@ ingest-daily-mirror = "ingestion.cli:main"
 ingest-newsfirst = "ingestion.cli:main_newsfirst"
 ingest-hiru-news-sinhala = "ingestion.cli:main_hiru_news_sinhala"
 ingest-ada-derana-sinhala = "ingestion.cli:main_ada_derana_sinhala"
+ingest-scheduler = "ingestion.cli:main_scheduler"
 
 [project.optional-dependencies]
 dev = [
@@ -49,5 +51,5 @@ strict = true
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["feedparser", "feedparser.*"]
+module = ["feedparser", "feedparser.*", "apscheduler.*"]
 ignore_missing_imports = true

@@ -35,3 +35,8 @@ class Settings(BaseSettings):
     ada_derana_sinhala_feed_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/rss.php")
     ada_derana_sinhala_homepage_url: AnyHttpUrl = AnyHttpUrl("https://sinhala.adaderana.lk/")
     run_limit: int = Field(default=3, ge=1, le=20)
+    scheduler_enabled: bool = False
+    scheduler_interval_minutes: int = Field(default=10, ge=5)
+    scheduler_jitter_seconds: int = Field(default=120, ge=0)
+    lease_duration_seconds: int = Field(default=600, ge=60)
+    heartbeat_interval_seconds: int = Field(default=120, ge=30)

@@ -76,3 +76,17 @@ def main_hiru_news_sinhala() -> int:
 
 def main_ada_derana_sinhala() -> int:
     return _run("ada-derana-sinhala")
+
+
+def main_scheduler() -> int:
+    from ingestion.scheduler import start_scheduler
+
+    settings = Settings()  # type: ignore[call-arg]
+    configure_logging(settings.log_level)
+
+    start_scheduler(
+        ["daily-mirror", "newsfirst", "hiru-news-sinhala"],
+        _adapter,
+        settings,
+    )
+    return 0

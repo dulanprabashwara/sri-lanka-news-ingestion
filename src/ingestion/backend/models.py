@@ -27,3 +27,19 @@ class SubmissionResult(BaseModel):
         validation_alias="duplicateReason",
         serialization_alias="duplicateReason",
     )
+
+
+class IngestionTriggerType(StrEnum):
+    SCHEDULED = "SCHEDULED"
+    MANUAL = "MANUAL"
+
+
+class ClaimResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    claimed: bool
+    run_id: str | None = Field(default=None, validation_alias="runId", serialization_alias="runId")
+    lease_expires_at: str | None = Field(
+        default=None, validation_alias="leaseExpiresAt", serialization_alias="leaseExpiresAt"
+    )
+    reason: str | None = None

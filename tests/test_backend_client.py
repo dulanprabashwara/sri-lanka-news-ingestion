@@ -151,3 +151,41 @@ def test_maps_backend_network_failure() -> None:
         pytest.raises(BackendUnavailableError),
     ):
         client.submit(article())
+
+
+def test_heartbeat_404_raises_not_found_error() -> None:
+    """404 from heartbeat means the run is gone — this must be a fatal error, not transient."""
+    from ingestion.backend import BackendNotFoundError
+
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(404, json={"message": "IngestionRun was not found."})
+    )
+    with (
+        BackendIngestionClient(settings(), transport=transport) as client,
+        pytest.raises(BackendNotFoundError, match="IngestionRun was not found"),
+    ):
+        client.heartbeat("nonexistent-run-id")
+
+
+def test_heartbeat_409_raises_validation_error() -> None:
+    """409 from heartbeat means lease conflict — this must be a fatal error."""
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(409, json={"message": "Lease conflict."})
+    )
+    with (
+        BackendIngestionClient(settings(), transport=transport) as client,
+        pytest.raises(BackendValidationError, match="Lease conflict"),
+    ):
+        client.heartbeat("conflicted-run-id")
+
+
+def test_heartbeat_503_raises_service_error() -> None:
+    """5xx from heartbeat is a transient error — the worker should retry."""
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(503, json={"message": "Service unavailable."})
+    )
+    with (
+        BackendIngestionClient(settings(), transport=transport) as client,
+        pytest.raises(BackendServiceError, match="Service unavailable"),
+    ):
+        client.heartbeat("some-run-id")

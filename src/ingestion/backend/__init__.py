@@ -4,6 +4,7 @@ from ingestion.backend.client import BackendIngestionClient
 from ingestion.backend.errors import (
     BackendAuthenticationError,
     BackendClientError,
+    BackendNotFoundError,
     BackendProtocolError,
     BackendServiceError,
     BackendUnavailableError,
@@ -15,6 +16,7 @@ __all__ = [
     "BackendAuthenticationError",
     "BackendClientError",
     "BackendIngestionClient",
+    "BackendNotFoundError",
     "BackendProtocolError",
     "BackendServiceError",
     "BackendUnavailableError",
