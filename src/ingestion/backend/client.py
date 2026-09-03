@@ -20,6 +20,8 @@ from ingestion.models import NormalizedArticle
 class BackendIngestionClient:
     ENDPOINT = "/api/internal/v1/articles"
     RUNS_ENDPOINT = "/api/internal/v1/ingestion-runs"
+    CONFIG_ENDPOINT = "/api/internal/v1/ingestion/sources"
+    TRIGGERS_ENDPOINT = "/api/internal/v1/ingestion/triggers"
     API_KEY_HEADER = "X-Ingestion-API-Key"
 
     def __init__(
@@ -154,6 +156,60 @@ class BackendIngestionClient:
         except (httpx.TimeoutException, httpx.NetworkError) as error:
             raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
 
+        self._check_response(response)
+
+    def get_sources(self) -> list[dict[str, Any]]:
+        try:
+            response = self._client.get(self.CONFIG_ENDPOINT)
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
+
+        self._check_response(response)
+        data: list[dict[str, Any]] = response.json()
+        return data
+
+    def claim_manual_trigger(self, worker_id: str) -> dict[str, Any]:
+        payload = {"workerId": worker_id}
+        try:
+            response = self._client.post(
+                f"{self.TRIGGERS_ENDPOINT}/claim", json=payload
+            )
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
+
+        self._check_response(response)
+        data: dict[str, Any] = response.json()
+        return data
+
+    def trigger_run_started(self, trigger_id: str, run_id: str) -> None:
+        try:
+            response = self._client.post(
+                f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/run-started",
+                json={"runId": run_id},
+            )
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
+        self._check_response(response)
+
+    def trigger_retry(self, trigger_id: str) -> None:
+        try:
+            response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/retry")
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
+        self._check_response(response)
+
+    def trigger_complete(self, trigger_id: str) -> None:
+        try:
+            response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/complete")
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
+        self._check_response(response)
+
+    def trigger_fail(self, trigger_id: str) -> None:
+        try:
+            response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/fail")
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
         self._check_response(response)
 
     def _check_response(self, response: httpx.Response) -> None:

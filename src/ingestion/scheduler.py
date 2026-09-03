@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from ingestion.backend import BackendClientError, BackendIngestionClient
+from ingestion.backend import BackendClientError, BackendIngestionClient, BackendUnavailableError
 from ingestion.backend.models import IngestionTriggerType
 from ingestion.config import Settings
 from ingestion.http import HttpFetcher
@@ -57,6 +57,8 @@ def run_scheduled_job(
     source_slug: str,
     adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
     settings: Settings,
+    trigger_type: IngestionTriggerType = IngestionTriggerType.SCHEDULED,
+    trigger_id: str | None = None,
 ) -> None:
     logger = logging.getLogger(f"ingestion.scheduler.{source_slug}")
     worker_id = str(uuid.uuid4())
@@ -68,24 +70,46 @@ def run_scheduled_job(
         try:
             claim_resp = backend_client.claim(
                 source_slug=source_slug,
-                trigger_type=IngestionTriggerType.SCHEDULED,
+                trigger_type=trigger_type,
                 scheduled_for=datetime.now(UTC).isoformat(),
                 worker_id=worker_id,
             )
         except BackendClientError as error:
             logger.warning("claim_request_failed source=%s error=%s", source_slug, error)
+            if trigger_id:
+                # If backend is down, we could just retry later
+                backend_client.trigger_retry(trigger_id)
             return
 
         if not claim_resp.claimed:
             logger.debug("claim_denied source=%s reason=%s", source_slug, claim_resp.reason)
+            if trigger_id and claim_resp.reason == "ACTIVE_RUN":
+                logger.info(
+                    "manual_trigger_active_run_retry trigger_id=%s source=%s",
+                    trigger_id,
+                    source_slug,
+                )
+                backend_client.trigger_retry(trigger_id)
+            elif trigger_id:
+                backend_client.trigger_fail(trigger_id)
             return
 
         run_id = claim_resp.run_id
         if not run_id:
             logger.error("claim_succeeded_but_no_run_id source=%s", source_slug)
+            if trigger_id:
+                backend_client.trigger_fail(trigger_id)
             return
 
         logger.info("lease_acquired source=%s run_id=%s", source_slug, run_id)
+
+        if trigger_id:
+            try:
+                backend_client.trigger_run_started(trigger_id, run_id)
+            except BackendClientError:
+                logger.warning(
+                    "failed_to_report_trigger_run_started trigger_id=%s", trigger_id
+                )
 
         stop_event = threading.Event()
         heartbeat_thread = threading.Thread(
@@ -119,6 +143,8 @@ def run_scheduled_job(
                     succeeded=summary.created + summary.duplicates,
                     failed=summary.failed,
                 )
+                if trigger_id:
+                    backend_client.trigger_fail(trigger_id)
             else:
                 backend_client.complete(
                     run_id=run_id,
@@ -127,6 +153,8 @@ def run_scheduled_job(
                     succeeded=summary.created + summary.duplicates,
                     failed=summary.failed,
                 )
+                if trigger_id:
+                    backend_client.trigger_complete(trigger_id)
             logger.info(
                 "run_completed source=%s run_id=%s discovered=%d",
                 source_slug,
@@ -148,10 +176,101 @@ def run_scheduled_job(
                     succeeded=0,
                     failed=0,
                 )
+                if trigger_id:
+                    backend_client.trigger_fail(trigger_id)
+
+
+def _config_reloader_worker(
+    scheduler: BlockingScheduler,
+    adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
+    settings: Settings,
+    logger: logging.Logger,
+) -> None:
+    while True:
+        try:
+            with BackendIngestionClient(settings) as client:
+                sources = client.get_sources()
+
+            active_jobs = {job.id: job for job in scheduler.get_jobs()}
+            configured_slugs: set[str] = set()
+
+            for source_conf in sources:
+                slug = source_conf.get("sourceSlug")
+                if not slug:
+                    continue
+
+                configured_slugs.add(slug)
+                job_id = f"job_{slug}"
+
+                if source_conf.get("enabled"):
+                    interval = source_conf.get("intervalMinutes", 10)
+                    jitter = source_conf.get("jitterSeconds", 120)
+
+                    if job_id in active_jobs:
+                        job = active_jobs[job_id]
+                        trigger = job.trigger
+                        if isinstance(trigger, IntervalTrigger):
+                            current_interval = trigger.interval.total_seconds()
+                            if current_interval != interval * 60 or trigger.jitter != jitter:
+                                scheduler.reschedule_job(
+                                    job_id,
+                                    trigger=IntervalTrigger(
+                                        minutes=interval, jitter=jitter
+                                    ),
+                                )
+                                logger.info(
+                                    "rescheduled_job source=%s interval=%d jitter=%d",
+                                    slug,
+                                    interval,
+                                    jitter,
+                                )
+                    else:
+                        try:
+                            # Verify adapter is supported
+                            with HttpFetcher(settings) as fetcher:
+                                adapter_factory(slug, fetcher, settings)
+
+                            scheduler.add_job(
+                                run_scheduled_job,
+                                trigger=IntervalTrigger(
+                                    minutes=interval,
+                                    jitter=jitter,
+                                ),
+                                args=[slug, adapter_factory, settings],
+                                id=job_id,
+                                replace_existing=True,
+                                max_instances=1,
+                                coalesce=True,
+                            )
+                            logger.info(
+                                "scheduled_job source=%s interval=%d jitter=%d",
+                                slug,
+                                interval,
+                                jitter,
+                            )
+                        except Exception:
+                            logger.warning("skipping_unsupported_source source=%s", slug)
+                else:
+                    if job_id in active_jobs:
+                        scheduler.remove_job(job_id)
+                        logger.info("removed_disabled_job source=%s", slug)
+
+            # Remove jobs that are no longer in config at all
+            for job_id in active_jobs:
+                slug = job_id.removeprefix("job_")
+                if slug not in configured_slugs:
+                    scheduler.remove_job(job_id)
+                    logger.info("removed_deleted_job source=%s", slug)
+
+        except BackendUnavailableError:
+            logger.warning("config_reload_failed backend_unavailable, keeping_existing_jobs")
+        except Exception:
+            logger.exception("config_reload_unexpected_error")
+
+        time.sleep(60)
 
 
 def start_scheduler(
-    sources: list[str],
     adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
     settings: Settings,
 ) -> None:
@@ -161,27 +280,25 @@ def start_scheduler(
         logger.info("Scheduler is disabled (INGESTION_SCHEDULER_ENABLED=false). Exiting.")
         return
 
+    from ingestion.trigger_worker import trigger_worker_loop
+
     scheduler = BlockingScheduler()
 
-    for source in sources:
-        scheduler.add_job(
-            run_scheduled_job,
-            trigger=IntervalTrigger(
-                minutes=settings.scheduler_interval_minutes,
-                jitter=settings.scheduler_jitter_seconds,
-            ),
-            args=[source, adapter_factory, settings],
-            id=f"job_{source}",
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True,
-        )
-        logger.info(
-            "scheduled_job source=%s interval_minutes=%d jitter_seconds=%d",
-            source,
-            settings.scheduler_interval_minutes,
-            settings.scheduler_jitter_seconds,
-        )
+    # Manual trigger worker thread
+    trigger_thread = threading.Thread(
+        target=trigger_worker_loop,
+        args=(adapter_factory, settings),
+        daemon=True,
+    )
+    trigger_thread.start()
+
+    # Config reloader thread
+    config_thread = threading.Thread(
+        target=_config_reloader_worker,
+        args=(scheduler, adapter_factory, settings, logger),
+        daemon=True,
+    )
+    config_thread.start()
 
     logger.info("Starting ingestion scheduler...")
     try:

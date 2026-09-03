@@ -85,7 +85,6 @@ def main_scheduler() -> int:
     configure_logging(settings.log_level)
 
     start_scheduler(
-        ["daily-mirror", "newsfirst", "hiru-news-sinhala"],
         _adapter,
         settings,
     )
