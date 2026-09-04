@@ -21,6 +21,7 @@ from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 from ingestion.sources.common import (
     author_names,
+    image_metadata,
     news_article_data,
     normalized_paragraphs,
 )
@@ -115,7 +116,7 @@ class LankadeepaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
-                    "image": None,
+                    "image": image_metadata(document, data, response.final_url),
                 }
             )
         except ValidationError as error:
