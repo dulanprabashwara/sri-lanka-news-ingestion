@@ -171,9 +171,7 @@ class BackendIngestionClient:
     def claim_manual_trigger(self, worker_id: str) -> dict[str, Any]:
         payload = {"workerId": worker_id}
         try:
-            response = self._client.post(
-                f"{self.TRIGGERS_ENDPOINT}/claim", json=payload
-            )
+            response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/claim", json=payload)
         except (httpx.TimeoutException, httpx.NetworkError) as error:
             raise BackendUnavailableError("Internal ingestion API is unavailable.") from error
 
@@ -248,7 +246,9 @@ class BackendIngestionClient:
                 "altText": article.image.alt_text,
                 "width": article.image.width,
                 "height": article.image.height,
-            } if article.image else None,
+            }
+            if article.image
+            else None,
         }
 
     @staticmethod

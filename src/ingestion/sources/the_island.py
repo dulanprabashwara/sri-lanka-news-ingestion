@@ -1,6 +1,7 @@
 import html
 import json
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, ClassVar
 
@@ -184,10 +185,8 @@ class TheIslandAdapter(SourceAdapter):
         page_url: str,
     ) -> str:
         extracted = None
-        try:
+        with suppress(HtmlExtractionError):
             extracted = extract_canonical_url(document, page_url=page_url)
-        except HtmlExtractionError:
-            pass
 
         if extracted is None:
             og_url = document.select_one("meta[property='og:url']")
@@ -195,18 +194,14 @@ class TheIslandAdapter(SourceAdapter):
             if isinstance(content, list):
                 content = content[0] if content else None
             if isinstance(content, str):
-                try:
+                with suppress(UrlNormalizationError):
                     extracted = canonicalize_url(content, base_url=page_url)
-                except UrlNormalizationError:
-                    pass
 
         if extracted is None:
             structured_url = data.get("url")
             if isinstance(structured_url, str):
-                try:
+                with suppress(UrlNormalizationError):
                     extracted = canonicalize_url(structured_url, base_url=page_url)
-                except UrlNormalizationError:
-                    pass
 
         if extracted is None:
             extracted = page_url

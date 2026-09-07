@@ -66,7 +66,7 @@ class LankadeepaAdapter(SourceAdapter):
         document = parse_html(response.text)
         candidates: list[DiscoveryCandidate] = []
         seen: set[str] = set()
-        
+
         for anchor in document.select("a[href]"):
             href = anchor.get("href")
             if not isinstance(href, str):
@@ -182,9 +182,18 @@ class LankadeepaAdapter(SourceAdapter):
             parsed = None
         if parsed is None:
             months = {
-                "ජනවාරි": 1, "පෙබරවාරි": 2, "මාර්තු": 3, "අප්‍රේල්": 4,
-                "මැයි": 5, "ජූනි": 6, "ජූලි": 7, "අගෝස්තු": 8,
-                "සැප්තැම්බර්": 9, "ඔක්තෝබර්": 10, "නොවැම්බර්": 11, "දෙසැම්බර්": 12
+                "ජනවාරි": 1,
+                "පෙබරවාරි": 2,
+                "මාර්තු": 3,
+                "අප්‍රේල්": 4,
+                "මැයි": 5,
+                "ජූනි": 6,
+                "ජූලි": 7,
+                "අගෝස්තු": 8,
+                "සැප්තැම්බර්": 9,
+                "ඔක්තෝබර්": 10,
+                "නොවැම්බර්": 11,
+                "දෙසැම්බර්": 12,
             }
             for m_name, m_num in months.items():
                 if m_name in value:

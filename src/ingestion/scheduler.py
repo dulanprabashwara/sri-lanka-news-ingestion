@@ -107,9 +107,7 @@ def run_scheduled_job(
             try:
                 backend_client.trigger_run_started(trigger_id, run_id)
             except BackendClientError:
-                logger.warning(
-                    "failed_to_report_trigger_run_started trigger_id=%s", trigger_id
-                )
+                logger.warning("failed_to_report_trigger_run_started trigger_id=%s", trigger_id)
 
         stop_event = threading.Event()
         heartbeat_thread = threading.Thread(
@@ -214,9 +212,7 @@ def _config_reloader_worker(
                             if current_interval != interval * 60 or trigger.jitter != jitter:
                                 scheduler.reschedule_job(
                                     job_id,
-                                    trigger=IntervalTrigger(
-                                        minutes=interval, jitter=jitter
-                                    ),
+                                    trigger=IntervalTrigger(minutes=interval, jitter=jitter),
                                 )
                                 logger.info(
                                     "rescheduled_job source=%s interval=%d jitter=%d",

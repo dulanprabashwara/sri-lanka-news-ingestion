@@ -80,8 +80,11 @@ def parse_feed(
             if isinstance(raw_external_id, str) and raw_external_id.strip()
             else None
         )
+        parsed_datetime = entry.get("published_parsed")
+        if parsed_datetime is None and "updated_parsed" in entry:
+            parsed_datetime = entry["updated_parsed"]
         published_at = _entry_datetime(
-            entry.get("published_parsed") or entry.get("updated_parsed"),
+            parsed_datetime,
             raw_value=entry.get("published") or entry.get("updated"),
             default_timezone=default_timezone,
         )

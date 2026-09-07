@@ -8,12 +8,12 @@ from ingestion.runner import run_once
 from ingestion.sources import (
     AdaDeranaSinhalaAdapter,
     DailyMirrorAdapter,
+    DivainaAdapter,
     HiruNewsSinhalaAdapter,
+    LankadeepaAdapter,
     NewsFirstAdapter,
     SourceAdapter,
     TheIslandAdapter,
-    DivainaAdapter,
-    LankadeepaAdapter,
 )
 
 

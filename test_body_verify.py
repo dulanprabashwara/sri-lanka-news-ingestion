@@ -1,6 +1,8 @@
 """Check div.article-body content for both articles."""
-import sys
+
 import hashlib
+import sys
+
 import httpx
 from bs4 import BeautifulSoup
 
@@ -13,7 +15,7 @@ for article_id, url in URLS.items():
     r = httpx.get(url, follow_redirects=True)
     soup = BeautifulSoup(r.text, "html.parser")
     sys.stdout.buffer.write(f"\n=== Article {article_id} ===\n".encode())
-    
+
     # Try div.article-body
     body_div = soup.select_one("div.article-body")
     if body_div:
@@ -24,7 +26,7 @@ for article_id, url in URLS.items():
         sys.stdout.buffer.write(f"div.article-body hash: {body_hash}\n".encode())
         sys.stdout.buffer.write(f"div.article-body body length: {len(full_body)} chars\n".encode())
         for i, p in enumerate(paras[:3]):
-            sys.stdout.buffer.write(f"  P{i}: {p[:80]}...\n".encode('utf-8'))
+            sys.stdout.buffer.write(f"  P{i}: {p[:80]}...\n".encode())
     else:
         sys.stdout.buffer.write(b"div.article-body: NOT FOUND\n")
 

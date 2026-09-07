@@ -104,6 +104,7 @@ def test_rejects_missing_the_island_body() -> None:
         with pytest.raises(TheIslandExtractionError, match="body is missing"):
             adapter.extract_article(reference)
 
+
 def test_extracts_the_island_article_body_v2() -> None:
     article_html = (FIXTURES / "the-island-article-v2.html").read_bytes()
     transport = httpx.MockTransport(

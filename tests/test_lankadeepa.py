@@ -104,6 +104,7 @@ def test_rejects_missing_lankadeepa_body() -> None:
         with pytest.raises(LankadeepaExtractionError, match="body is missing"):
             adapter.extract_article(reference)
 
+
 def test_extracts_lankadeepa_no_canonical_url() -> None:
     article_html = (FIXTURES / "lankadeepa-article-no-canonical.html").read_bytes()
     transport = httpx.MockTransport(
@@ -128,6 +129,7 @@ def test_extracts_lankadeepa_no_canonical_url() -> None:
         normalized = adapter.normalize(adapter.extract_article(reference))
 
     assert str(normalized.canonical_url) == ARTICLE_URL
+
 
 def test_extracts_lankadeepa_fallback_canonical_url() -> None:
     article_html = (FIXTURES / "lankadeepa-article-no-og-url.html").read_bytes()

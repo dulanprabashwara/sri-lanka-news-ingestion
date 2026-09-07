@@ -47,9 +47,7 @@ def trigger_worker_loop(
                         with HttpFetcher(settings) as fetcher:
                             adapter_factory(source_slug, fetcher, settings)
                     except Exception:
-                        logger.error(
-                            "manual_trigger_unsupported_source source=%s", source_slug
-                        )
+                        logger.error("manual_trigger_unsupported_source source=%s", source_slug)
                         client.trigger_fail(trigger_id)
                         continue
 

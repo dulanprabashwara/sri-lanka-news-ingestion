@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from ingestion.extraction import (
     HtmlExtractionError,
-    extract_attribute,
     extract_canonical_url,
     extract_text,
     extract_texts,
@@ -20,7 +19,6 @@ from ingestion.http import HttpFetcher
 from ingestion.models import (
     DiscoveryCandidate,
     ExtractedArticle,
-    ImageMetadata,
     Language,
     NormalizedArticle,
 )
@@ -37,9 +35,7 @@ class DivainaAdapter(SourceAdapter):
     SOURCE_SLUG = "divaina"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTOR = "h1.entry-title"
-    BODY_SELECTORS = (
-        "div.entry-content > p",
-    )
+    BODY_SELECTORS = ("div.entry-content > p",)
     AUTHOR_SELECTOR = ".author-name, .byline"
     ACCEPTED_FEED_TYPES: ClassVar[frozenset[str]] = frozenset(
         {
