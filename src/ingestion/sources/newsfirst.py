@@ -112,7 +112,9 @@ class NewsFirstAdapter(SourceAdapter):
                     "published_at": published_at,
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
-                    "summary": article_summary(document, data, ignore_phrases=("Get the latest breaking news",)),
+                    "summary": article_summary(
+                        document, data, ignore_phrases=("Get the latest breaking news",)
+                    ),
                     "image": image_metadata(document, data, response.final_url),
                 }
             )

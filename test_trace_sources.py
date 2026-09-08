@@ -1,20 +1,22 @@
 import os
 import sys
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
 os.environ.pop("ALL_PROXY", None)
 
+from ingestion.cli import _adapter
 from ingestion.config import Settings
 from ingestion.http import HttpFetcher
-from ingestion.cli import _adapter
 
-settings = Settings.model_validate({
-    "api_key": "test-secret",
-    "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-})
+settings = Settings.model_validate(
+    {
+        "api_key": "test-secret",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    }
+)
 
 with HttpFetcher(settings) as fetcher:
     print("--- Testing Daily Mirror with Browser User-Agent ---")

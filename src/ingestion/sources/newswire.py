@@ -1,6 +1,7 @@
 import html
 import json
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, ClassVar
 
@@ -9,7 +10,6 @@ from pydantic import ValidationError
 
 from ingestion.extraction import (
     HtmlExtractionError,
-    extract_attribute,
     extract_canonical_url,
     extract_text,
     extract_texts,
@@ -20,30 +20,28 @@ from ingestion.http import HttpFetcher
 from ingestion.models import (
     DiscoveryCandidate,
     ExtractedArticle,
-    ImageMetadata,
     Language,
     NormalizedArticle,
 )
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
-from ingestion.sources.common import article_summary
+from ingestion.sources.common import article_summary, image_metadata
 
 
-class DailyMirrorExtractionError(PublisherExtractionError):
-    """Raised when Daily Mirror markup lacks required article data."""
+class NewswireExtractionError(PublisherExtractionError):
+    """Raised when Newswire markup or feed lacks required article data."""
 
 
-class DailyMirrorAdapter(SourceAdapter):
-    SOURCE_SLUG = "daily-mirror"
+class NewswireAdapter(SourceAdapter):
+    SOURCE_SLUG = "newswire"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
-    TITLE_SELECTOR = "h1.inner_header.mmfpmf, h1.inner_header"
+    TITLE_SELECTOR = "h1.entry-title, h1.post-title, h1"
     BODY_SELECTORS = (
-        "div.a-content.mmfpmf > p",
-        ".article-content p",
-        ".article_body p",
-        "#article-body p",
+        "div.entry-content p",
+        "div.post-content p",
+        "article p",
     )
-    AUTHOR_SELECTOR = ".article-author, .byline .author, .author-name"
+    AUTHOR_SELECTOR = ".author-name, .entry-author a, .byline a"
     ACCEPTED_FEED_TYPES: ClassVar[frozenset[str]] = frozenset(
         {
             "application/rss+xml",
@@ -90,21 +88,22 @@ class DailyMirrorAdapter(SourceAdapter):
             document = parse_html(response.text)
             structured_data = self._news_article_data(document)
 
-            title = self._title(document, structured_data)
+            title = self._title(document, structured_data, candidate)
             body = self._body(document, structured_data)
             published_at = self._published_at(structured_data, candidate)
             canonical_url = self._canonical_url(document, structured_data, response.final_url)
             authors = self._authors(document, structured_data)
-            image = self._image(document, structured_data, response.final_url)
             summary = article_summary(document, structured_data)
+            image = image_metadata(document, structured_data, response.final_url)
         except Exception:
-            title = candidate.title or "Daily Mirror Article"
-            body = candidate.title or "Daily Mirror Article"
+            # Fallback if HTML fetch is unavailable or fails
+            title = candidate.title or "Newswire Article"
+            body = candidate.title or "Newswire Article"
             published_at = candidate.published_at or self._now()
             canonical_url = str(candidate.url)
             authors = ()
-            image = None
             summary = None
+            image = None
 
         try:
             return ExtractedArticle.model_validate(
@@ -123,7 +122,7 @@ class DailyMirrorAdapter(SourceAdapter):
                 }
             )
         except ValidationError as error:
-            raise DailyMirrorExtractionError("Daily Mirror article data is invalid.") from error
+            raise NewswireExtractionError("Newswire article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
         return NormalizedArticle.model_validate(article.model_dump())
@@ -140,7 +139,7 @@ class DailyMirrorAdapter(SourceAdapter):
             for item in self._structured_items(payload):
                 item_type = item.get("@type")
                 types = item_type if isinstance(item_type, list) else [item_type]
-                if "NewsArticle" in types:
+                if "NewsArticle" in types or "Article" in types:
                     return item
         return {}
 
@@ -154,16 +153,19 @@ class DailyMirrorAdapter(SourceAdapter):
             return [item for item in graph if isinstance(item, dict)]
         return [payload]
 
-    def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
+    def _title(
+        self, document: BeautifulSoup, data: dict[str, Any], candidate: DiscoveryCandidate
+    ) -> str:
         headline = data.get("headline")
         if isinstance(headline, str) and headline.strip():
             return html.unescape(headline).strip()
-        try:
+        with suppress(HtmlExtractionError):
             title = extract_text(document, self.TITLE_SELECTOR)
-        except HtmlExtractionError as error:
-            raise DailyMirrorExtractionError("Daily Mirror article title is missing.") from error
-        assert title is not None
-        return title
+            if title:
+                return title
+        if candidate.title:
+            return candidate.title.strip()
+        raise NewswireExtractionError("Newswire article title is missing.")
 
     def _body(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
         article_body = data.get("articleBody")
@@ -173,7 +175,7 @@ class DailyMirrorAdapter(SourceAdapter):
             paragraphs = extract_texts(document, selector)
             if paragraphs:
                 return "\n\n".join(paragraphs)
-        raise DailyMirrorExtractionError("Daily Mirror article body is missing.")
+        raise NewswireExtractionError("Newswire article body is missing.")
 
     def _published_at(
         self,
@@ -190,7 +192,7 @@ class DailyMirrorAdapter(SourceAdapter):
                 pass
         if candidate.published_at is not None:
             return candidate.published_at
-        raise DailyMirrorExtractionError("Daily Mirror publication time is missing.")
+        raise NewswireExtractionError("Newswire publication time is missing.")
 
     def _canonical_url(
         self,
@@ -198,16 +200,26 @@ class DailyMirrorAdapter(SourceAdapter):
         data: dict[str, Any],
         page_url: str,
     ) -> str:
+        extracted = None
+        with suppress(HtmlExtractionError):
+            extracted = extract_canonical_url(document, page_url=page_url)
+
+        if extracted is None:
+            og_url = document.select_one("meta[property='og:url']")
+            content = og_url.get("content") if og_url else None
+            if isinstance(content, list):
+                content = content[0] if content else None
+            if isinstance(content, str):
+                with suppress(UrlNormalizationError):
+                    extracted = canonicalize_url(content, base_url=page_url)
+
+        if extracted is None:
+            extracted = page_url
+
         try:
-            return extract_canonical_url(document, page_url=page_url)
-        except HtmlExtractionError:
-            structured_url = data.get("url")
-            if isinstance(structured_url, str):
-                try:
-                    return canonicalize_url(structured_url, base_url=page_url)
-                except UrlNormalizationError:
-                    pass
-            raise DailyMirrorExtractionError("Daily Mirror canonical URL is missing.") from None
+            return canonicalize_url(extracted, base_url=page_url)
+        except UrlNormalizationError as error:
+            raise NewswireExtractionError("Newswire canonical URL is missing.") from error
 
     def _authors(self, document: BeautifulSoup, data: dict[str, Any]) -> tuple[str, ...]:
         names = self._author_names(data.get("author"))
@@ -225,32 +237,6 @@ class DailyMirrorAdapter(SourceAdapter):
                 if normalized and normalized not in names:
                     names.append(normalized)
         return tuple(names)
-
-    def _image(
-        self,
-        document: BeautifulSoup,
-        data: dict[str, Any],
-        page_url: str,
-    ) -> ImageMetadata | None:
-        candidate: Any = data.get("image")
-        if isinstance(candidate, dict):
-            candidate = candidate.get("url")
-        if isinstance(candidate, list) and candidate:
-            first = candidate[0]
-            candidate = first.get("url") if isinstance(first, dict) else first
-        if not isinstance(candidate, str) or candidate.casefold() in {"", "none"}:
-            candidate = extract_attribute(
-                document,
-                "meta[property='og:image']",
-                "content",
-                required=False,
-            )
-        if not isinstance(candidate, str):
-            return None
-        try:
-            return ImageMetadata.model_validate({"url": candidate}, context={"page_url": page_url})
-        except ValidationError:
-            return None
 
     @staticmethod
     def _normalize_body(value: str) -> str:

@@ -20,7 +20,7 @@ dependencies = [
 ingest-daily-mirror = "ingestion.cli:main"
 ingest-newsfirst = "ingestion.cli:main_newsfirst"
 ingest-hiru-news-sinhala = "ingestion.cli:main_hiru_news_sinhala"
-ingest-ada-derana-sinhala = "ingestion.cli:main_ada_derana_sinhala"
+ingest-newswire = "ingestion.cli:main_newswire"
 ingest-the-island = "ingestion.cli:main_the_island"
 ingest-divaina = "ingestion.cli:main_divaina"
 ingest-lankadeepa = "ingestion.cli:main_lankadeepa"
@@ -46,6 +46,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "E402"]
 
 [tool.mypy]
 python_version = "3.12"

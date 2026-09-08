@@ -130,7 +130,14 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
-                    "summary": article_summary(document, data, ignore_phrases=("Hiru News", "Most visited website in Sri Lanka",)),
+                    "summary": article_summary(
+                        document,
+                        data,
+                        ignore_phrases=(
+                            "Hiru News",
+                            "Most visited website in Sri Lanka",
+                        ),
+                    ),
                     "image": image_metadata(document, data, response.final_url),
                 }
             )

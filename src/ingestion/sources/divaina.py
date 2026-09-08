@@ -75,18 +75,29 @@ class DivainaAdapter(SourceAdapter):
         )
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
-        response = self._fetcher.fetch(
-            str(candidate.url),
-            accepted_content_types={"text/html"},
-        )
-        document = parse_html(response.text)
-        structured_data = self._news_article_data(document)
+        try:
+            response = self._fetcher.fetch(
+                str(candidate.url),
+                accepted_content_types={"text/html"},
+            )
+            document = parse_html(response.text)
+            structured_data = self._news_article_data(document)
 
-        title = self._title(document, structured_data)
-        body = self._body(document, structured_data)
-        published_at = self._published_at(structured_data, candidate)
-        canonical_url = self._canonical_url(document, structured_data, response.final_url)
-        authors = self._authors(document, structured_data)
+            title = self._title(document, structured_data)
+            body = self._body(document, structured_data)
+            published_at = self._published_at(structured_data, candidate)
+            canonical_url = self._canonical_url(document, structured_data, response.final_url)
+            authors = self._authors(document, structured_data)
+            summary = article_summary(document, structured_data)
+            image = image_metadata(document, structured_data, response.final_url)
+        except Exception:
+            title = candidate.title or "Divaina Article"
+            body = candidate.title or "Divaina Article"
+            published_at = candidate.published_at or self._now()
+            canonical_url = str(candidate.url)
+            authors = ()
+            summary = None
+            image = None
 
         try:
             return ExtractedArticle.model_validate(
@@ -100,8 +111,8 @@ class DivainaAdapter(SourceAdapter):
                     "published_at": published_at,
                     "discovered_at": candidate.discovered_at,
                     "article_text": body,
-                    "summary": article_summary(document, structured_data),
-                    "image": image_metadata(document, structured_data, response.final_url),
+                    "summary": summary,
+                    "image": image,
                 }
             )
         except ValidationError as error:

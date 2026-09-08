@@ -1,4 +1,5 @@
 import os
+
 import httpx
 from bs4 import BeautifulSoup
 
@@ -7,7 +8,9 @@ os.environ.pop("HTTPS_PROXY", None)
 os.environ.pop("ALL_PROXY", None)
 
 url = "https://www.lankadeepa.lk/latest_news/%E0%B6%8C%E0%B7%80%E0%B6%A7-%E0%B6%B1%E0%B6%9C%E0%B6%B1%E0%B7%84%E0%B6%BB%E0%B6%A7-%E0%B6%AD%E0%B6%BB%E0%B6%B8%E0%B6%9A-%E0%B6%AD%E0%B6%AF-%E0%B7%80%E0%B7%83/1-697429"
-client = httpx.Client(trust_env=False, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+client = httpx.Client(
+    trust_env=False, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+)
 res = client.get(url)
 soup = BeautifulSoup(res.text, "html.parser")
 

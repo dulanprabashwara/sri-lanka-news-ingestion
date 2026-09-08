@@ -5,13 +5,14 @@ from ingestion.config import Settings
 from ingestion.http import HttpFetcher
 from ingestion.logging import configure_logging
 from ingestion.runner import run_once
+from ingestion.scheduler import start_scheduler
 from ingestion.sources import (
-    AdaDeranaSinhalaAdapter,
     DailyMirrorAdapter,
     DivainaAdapter,
     HiruNewsSinhalaAdapter,
     LankadeepaAdapter,
     NewsFirstAdapter,
+    NewswireAdapter,
     SourceAdapter,
     TheIslandAdapter,
 )
@@ -27,12 +28,8 @@ def _adapter(source_slug: str, fetcher: HttpFetcher, settings: Settings) -> Sour
             fetcher,
             listing_url=str(settings.hiru_news_sinhala_listing_url),
         )
-    if source_slug == "ada-derana-sinhala":
-        return AdaDeranaSinhalaAdapter(
-            fetcher,
-            feed_url=str(settings.ada_derana_sinhala_feed_url),
-            homepage_url=str(settings.ada_derana_sinhala_homepage_url),
-        )
+    if source_slug == "newswire":
+        return NewswireAdapter(fetcher, feed_url=str(settings.newswire_feed_url))
     if source_slug == "the-island":
         return TheIslandAdapter(fetcher, feed_url=str(settings.the_island_feed_url))
     if source_slug == "divaina":
@@ -83,8 +80,8 @@ def main_hiru_news_sinhala() -> int:
     return _run("hiru-news-sinhala")
 
 
-def main_ada_derana_sinhala() -> int:
-    return _run("ada-derana-sinhala")
+def main_newswire() -> int:
+    return _run("newswire")
 
 
 def main_the_island() -> int:
@@ -100,8 +97,6 @@ def main_lankadeepa() -> int:
 
 
 def main_scheduler() -> int:
-    from ingestion.scheduler import start_scheduler
-
     settings = Settings()  # type: ignore[call-arg]
     configure_logging(settings.log_level)
 

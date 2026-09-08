@@ -97,7 +97,7 @@ def article_summary(
     for candidate in [
         data.get("description"),
         extract_attribute(document, "meta[property='og:description']", "content", required=False),
-        extract_attribute(document, "meta[name='description']", "content", required=False)
+        extract_attribute(document, "meta[name='description']", "content", required=False),
     ]:
         cleaned = _clean(candidate)
         if cleaned:

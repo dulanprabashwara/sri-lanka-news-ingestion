@@ -123,7 +123,13 @@ class LankadeepaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
-                    "summary": article_summary(document, data, ignore_phrases=("Lankadeepa.lk Sri Lanka First Sinhala breaking news website updates",)),
+                    "summary": article_summary(
+                        document,
+                        data,
+                        ignore_phrases=(
+                            "Lankadeepa.lk Sri Lanka First Sinhala breaking news website updates",
+                        ),
+                    ),
                     "image": self._image(document, data, response.final_url),
                 }
             )
@@ -163,7 +169,9 @@ class LankadeepaAdapter(SourceAdapter):
                     ):
                         continue
                     try:
-                        return ImageMetadata.model_validate({"url": src}, context={"page_url": page_url})
+                        return ImageMetadata.model_validate(
+                            {"url": src}, context={"page_url": page_url}
+                        )
                     except ValidationError:
                         pass
 

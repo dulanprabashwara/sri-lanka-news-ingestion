@@ -1,6 +1,7 @@
 import os
-import httpx
 from urllib.parse import urlsplit
+
+import httpx
 
 os.environ.pop("HTTP_PROXY", None)
 os.environ.pop("HTTPS_PROXY", None)
@@ -38,4 +39,6 @@ for a in all_articles:
 print("\n--- PER SOURCE SNAPSHOT ---")
 for s in sorted(sources.keys()):
     st = sources[s]
-    print(f"Source: {s:20s} | Total: {st['total']:3d} | With LeadMedia: {st['has_media']:3d} | Domains: {list(st['domains'])}")
+    print(
+        f"Source: {s:20s} | Total: {st['total']:3d} | With LeadMedia: {st['has_media']:3d} | Domains: {list(st['domains'])}"
+    )
