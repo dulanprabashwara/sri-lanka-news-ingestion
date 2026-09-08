@@ -80,6 +80,7 @@ class ExtractedArticle(IngestionModel):
     published_at: datetime
     discovered_at: datetime
     article_text: str = Field(min_length=1, max_length=500_000)
+    summary: str | None = Field(default=None, max_length=2000)
     category: ArticleCategory | None = None
     image: ImageMetadata | None = None
 

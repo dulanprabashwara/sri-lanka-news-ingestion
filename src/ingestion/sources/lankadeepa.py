@@ -26,6 +26,7 @@ from ingestion.models import (
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 from ingestion.sources.common import (
+    article_summary,
     author_names,
     image_metadata,
     news_article_data,
@@ -122,6 +123,7 @@ class LankadeepaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
+                    "summary": article_summary(document, data, ignore_phrases=("Lankadeepa.lk Sri Lanka First Sinhala breaking news website updates",)),
                     "image": self._image(document, data, response.final_url),
                 }
             )

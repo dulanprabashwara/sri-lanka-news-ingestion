@@ -56,7 +56,7 @@ def test_article_rejects_invalid_source_slug() -> None:
 
 def test_article_rejects_unknown_fields() -> None:
     data = article_data()
-    data["summary"] = "AI fields do not belong here"
+    data["some_unknown_field"] = "This field does not belong here"
 
     with pytest.raises(ValidationError, match="Extra inputs"):
         ExtractedArticle.model_validate(data)

@@ -25,7 +25,7 @@ from ingestion.models import (
 )
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
-from ingestion.sources.common import image_metadata
+from ingestion.sources.common import article_summary, image_metadata
 
 
 class TheIslandExtractionError(PublisherExtractionError):
@@ -105,6 +105,7 @@ class TheIslandAdapter(SourceAdapter):
                     "published_at": published_at,
                     "discovered_at": candidate.discovered_at,
                     "article_text": body,
+                    "summary": article_summary(document, structured_data),
                     "image": image_metadata(document, structured_data, response.final_url),
                 }
             )

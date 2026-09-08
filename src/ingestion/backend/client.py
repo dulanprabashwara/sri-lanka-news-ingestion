@@ -240,6 +240,7 @@ class BackendIngestionClient:
             "discoveredAt": article.discovered_at.isoformat(),
             "category": article.category.value if article.category is not None else None,
             "extractedContent": article.article_text,
+            "summary": article.summary,
             "leadMedia": {
                 "url": str(article.image.url),
                 "type": "IMAGE",

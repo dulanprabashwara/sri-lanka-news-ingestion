@@ -69,5 +69,42 @@ def image_metadata(
         return None
 
 
+def article_summary(
+    document: BeautifulSoup,
+    data: dict[str, Any],
+    ignore_phrases: tuple[str, ...] = (),
+) -> str | None:
+    title_text = ""
+    if document.title and document.title.string:
+        title_text = document.title.string.strip()
+
+    def _clean(c: Any) -> str | None:
+        if not isinstance(c, str):
+            return None
+        c = html.unescape(c)
+        c = " ".join(c.split())
+        if not c:
+            return None
+        if len(c) > 2000:
+            c = c[:1997] + "..."
+        for phrase in ignore_phrases:
+            if phrase in c:
+                return None
+        if title_text and c == title_text:
+            return None
+        return c
+
+    for candidate in [
+        data.get("description"),
+        extract_attribute(document, "meta[property='og:description']", "content", required=False),
+        extract_attribute(document, "meta[name='description']", "content", required=False)
+    ]:
+        cleaned = _clean(candidate)
+        if cleaned:
+            return cleaned
+
+    return None
+
+
 def normalized_paragraphs(values: tuple[str, ...]) -> str:
     return "\n\n".join(value for value in values if value)

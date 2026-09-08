@@ -20,6 +20,7 @@ from ingestion.models import DiscoveryCandidate, ExtractedArticle, Language, Nor
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 from ingestion.sources.common import (
+    article_summary,
     author_names,
     image_metadata,
     news_article_data,
@@ -111,6 +112,7 @@ class NewsFirstAdapter(SourceAdapter):
                     "published_at": published_at,
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
+                    "summary": article_summary(document, data, ignore_phrases=("Get the latest breaking news",)),
                     "image": image_metadata(document, data, response.final_url),
                 }
             )

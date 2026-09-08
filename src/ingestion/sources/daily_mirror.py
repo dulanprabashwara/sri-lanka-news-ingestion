@@ -26,6 +26,7 @@ from ingestion.models import (
 )
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
+from ingestion.sources.common import article_summary
 
 
 class DailyMirrorExtractionError(PublisherExtractionError):
@@ -107,6 +108,7 @@ class DailyMirrorAdapter(SourceAdapter):
                     "published_at": published_at,
                     "discovered_at": candidate.discovered_at,
                     "article_text": body,
+                    "summary": article_summary(document, structured_data),
                     "image": image,
                 }
             )

@@ -20,6 +20,7 @@ from ingestion.models import DiscoveryCandidate, ExtractedArticle, Language, Nor
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 from ingestion.sources.common import (
+    article_summary,
     author_names,
     image_metadata,
     news_article_data,
@@ -129,6 +130,7 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
+                    "summary": article_summary(document, data, ignore_phrases=("Hiru News", "Most visited website in Sri Lanka",)),
                     "image": image_metadata(document, data, response.final_url),
                 }
             )
