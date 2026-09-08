@@ -16,7 +16,13 @@ from ingestion.extraction import (
     parse_html,
 )
 from ingestion.http import HttpFetcher
-from ingestion.models import DiscoveryCandidate, ExtractedArticle, Language, NormalizedArticle
+from ingestion.models import (
+    DiscoveryCandidate,
+    ExtractedArticle,
+    ImageMetadata,
+    Language,
+    NormalizedArticle,
+)
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
 from ingestion.sources.common import (
@@ -116,11 +122,59 @@ class LankadeepaAdapter(SourceAdapter):
                     "published_at": self._published_at(document, data, candidate),
                     "discovered_at": candidate.discovered_at,
                     "article_text": self._body(document, data),
-                    "image": image_metadata(document, data, response.final_url),
+                    "image": self._image(document, data, response.final_url),
                 }
             )
         except ValidationError as error:
             raise LankadeepaExtractionError("Lankadeepa article data is invalid.") from error
+
+    def _image(
+        self,
+        document: BeautifulSoup,
+        data: dict[str, Any],
+        page_url: str,
+    ) -> ImageMetadata | None:
+        for selector in (
+            "div.col-md-8 p img",
+            "div.col-md-8 img",
+            "div.article-body img",
+            "div.post-content img",
+            "article img",
+        ):
+            for img in document.select(selector):
+                classes = img.get("class") or []
+                if isinstance(classes, str):
+                    classes = classes.split()
+                if any(c in classes for c in ("me-feature-img", "article-more-img", "header-logo")):
+                    continue
+                src = img.get("src") or img.get("data-src")
+                if isinstance(src, str) and src.strip():
+                    if any(
+                        ignored in src
+                        for ignored in (
+                            "logo",
+                            "icon",
+                            "image_8df7de9e07",
+                            "image_ef4bce8a81",
+                            "hit-ad",
+                        )
+                    ):
+                        continue
+                    try:
+                        return ImageMetadata.model_validate({"url": src}, context={"page_url": page_url})
+                    except ValidationError:
+                        pass
+
+        img = image_metadata(document, data, page_url)
+        if img:
+            img_url_str = str(img.url)
+            if (
+                "image_8df7de9e07" not in img_url_str
+                and "image_ef4bce8a81" not in img_url_str
+                and "logo" not in img_url_str.lower()
+            ):
+                return img
+        return None
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
         return NormalizedArticle.model_validate(article.model_dump())
