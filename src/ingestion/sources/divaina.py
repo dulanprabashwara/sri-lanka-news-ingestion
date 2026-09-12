@@ -90,13 +90,19 @@ class DivainaAdapter(SourceAdapter):
             authors = self._authors(document, structured_data)
             summary = article_summary(document, structured_data)
             image = image_metadata(document, structured_data, response.final_url)
-        except Exception:
+        except DivainaExtractionError:
+            raise
+        except Exception as error:
+            fallback_body = candidate.content or candidate.description
+            if not fallback_body:
+                raise DivainaExtractionError("Divaina article body is missing.") from error
+
             title = candidate.title or "Divaina Article"
-            body = candidate.title or "Divaina Article"
-            published_at = candidate.published_at or self._now()
+            body = fallback_body
+            published_at = candidate.published_at or candidate.discovered_at or self._now()
             canonical_url = str(candidate.url)
             authors = ()
-            summary = None
+            summary = candidate.description if candidate.description and candidate.description != candidate.title else None
             image = None
 
         try:

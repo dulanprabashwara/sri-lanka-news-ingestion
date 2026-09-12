@@ -97,14 +97,20 @@ class DailyMirrorAdapter(SourceAdapter):
             authors = self._authors(document, structured_data)
             image = self._image(document, structured_data, response.final_url)
             summary = article_summary(document, structured_data)
-        except Exception:
+        except Exception as error:
+            fallback_body = candidate.content or candidate.description
+            if not fallback_body:
+                if isinstance(error, DailyMirrorExtractionError):
+                    raise
+                raise DailyMirrorExtractionError("Daily Mirror article body is missing.") from error
+
             title = candidate.title or "Daily Mirror Article"
-            body = candidate.title or "Daily Mirror Article"
-            published_at = candidate.published_at or self._now()
+            body = fallback_body
+            published_at = candidate.published_at or candidate.discovered_at or self._now()
             canonical_url = str(candidate.url)
             authors = ()
-            image = None
-            summary = None
+            image = self._fallback_image(candidate.image_url, str(candidate.url))
+            summary = self._fallback_summary(candidate.description, candidate.title)
 
         try:
             return ExtractedArticle.model_validate(
@@ -124,6 +130,24 @@ class DailyMirrorAdapter(SourceAdapter):
             )
         except ValidationError as error:
             raise DailyMirrorExtractionError("Daily Mirror article data is invalid.") from error
+
+    @staticmethod
+    def _fallback_summary(description: str | None, title: str | None) -> str | None:
+        if not description or not description.strip():
+            return None
+        cleaned = " ".join(description.split()).strip()
+        if title and cleaned.casefold() == title.strip().casefold():
+            return None
+        return cleaned[:2000]
+
+    @staticmethod
+    def _fallback_image(image_url: Any, page_url: str) -> ImageMetadata | None:
+        if not image_url:
+            return None
+        try:
+            return ImageMetadata.model_validate({"url": str(image_url)}, context={"page_url": page_url})
+        except ValidationError:
+            return None
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
         return NormalizedArticle.model_validate(article.model_dump())

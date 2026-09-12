@@ -59,6 +59,9 @@ class DiscoveryCandidate(IngestionModel):
     title: str | None = Field(default=None, min_length=1, max_length=1_000)
     published_at: datetime | None = None
     external_id: str | None = Field(default=None, min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=2_000)
+    content: str | None = Field(default=None, max_length=500_000)
+    image_url: AnyHttpUrl | None = None
 
     @field_validator("discovered_at", "published_at")
     @classmethod

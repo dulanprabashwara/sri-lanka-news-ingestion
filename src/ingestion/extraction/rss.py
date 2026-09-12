@@ -1,9 +1,12 @@
 import calendar
+import html
+import re
 from datetime import UTC, datetime, tzinfo
 from email.utils import parsedate_to_datetime
 from time import struct_time
 from typing import Any
 
+from bs4 import BeautifulSoup
 import feedparser
 from pydantic import ValidationError
 
@@ -45,6 +48,70 @@ def _entry_datetime(
     if not isinstance(value, struct_time):
         return None
     return datetime.fromtimestamp(calendar.timegm(value), tz=UTC)
+
+
+def _clean_rss_description(raw_description: Any, title: str | None) -> tuple[str | None, str | None]:
+    if not isinstance(raw_description, str) or not raw_description.strip():
+        return None, None
+    soup = BeautifulSoup(raw_description, "html.parser")
+    img = soup.find("img")
+    img_url = img.get("src") if img and img.get("src") else None
+    for tag in soup.find_all(["script", "style"]):
+        tag.decompose()
+    text = html.unescape(" ".join(soup.get_text().split())).strip()
+    text = re.sub(r"(?i)\bcontinue\s*reading\b.*", "", text).strip()
+    text = re.sub(r"(?i)throughcontinue.*", "through", text).strip()
+    if not text or (title and text.casefold() == title.casefold()):
+        return None, img_url
+    if len(text) > 2000:
+        text = text[:1997] + "..."
+    return text, img_url
+
+
+def _clean_rss_content(raw_content: Any, title: str | None) -> str | None:
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return None
+    soup = BeautifulSoup(raw_content, "html.parser")
+    for tag in soup.find_all(["script", "style"]):
+        tag.decompose()
+    paragraphs: list[str] = []
+    for block in soup.find_all(["p", "div"]):
+        para = html.unescape(" ".join(block.get_text().split())).strip()
+        para = re.sub(r"(?i)\bcontinue\s*reading\b.*", "", para).strip()
+        if para and (not title or para.casefold() != title.casefold()) and para not in paragraphs:
+            paragraphs.append(para)
+    if not paragraphs:
+        text = html.unescape(" ".join(soup.get_text().split())).strip()
+        text = re.sub(r"(?i)\bcontinue\s*reading\b.*", "", text).strip()
+        if text and (not title or text.casefold() != title.casefold()):
+            paragraphs = [text]
+    return "\n\n".join(paragraphs) if paragraphs else None
+
+
+def _extract_rss_image(entry: Any, extracted_img_url: str | None, base_url: str | None) -> str | None:
+    candidate_urls: list[str] = []
+    if isinstance(extracted_img_url, str) and extracted_img_url.strip():
+        candidate_urls.append(extracted_img_url.strip())
+    href = entry.get("href")
+    if isinstance(href, str) and href.strip():
+        candidate_urls.append(href.strip())
+    media_content = entry.get("media_content")
+    if isinstance(media_content, list):
+        for item in media_content:
+            if isinstance(item, dict) and isinstance(item.get("url"), str):
+                candidate_urls.append(item["url"].strip())
+    enclosures = entry.get("enclosures")
+    if isinstance(enclosures, list):
+        for item in enclosures:
+            if isinstance(item, dict) and isinstance(item.get("href"), str):
+                candidate_urls.append(item["href"].strip())
+
+    for url_candidate in candidate_urls:
+        try:
+            return canonicalize_url(url_candidate, base_url=base_url)
+        except UrlNormalizationError:
+            continue
+    return None
 
 
 def parse_feed(
@@ -89,6 +156,21 @@ def parse_feed(
             default_timezone=default_timezone,
         )
 
+        raw_description = entry.get("summary") or entry.get("description")
+        description, img_from_desc = _clean_rss_description(raw_description, title)
+
+        raw_content = None
+        content_list = entry.get("content")
+        if isinstance(content_list, list) and content_list:
+            first = content_list[0]
+            if isinstance(first, dict):
+                raw_content = first.get("value")
+        if not raw_content:
+            raw_content = entry.get("content_encoded")
+        content_text = _clean_rss_content(raw_content, title)
+
+        image_url = _extract_rss_image(entry, img_from_desc, base_url=base_url)
+
         try:
             candidate = DiscoveryCandidate.model_validate(
                 {
@@ -98,6 +180,9 @@ def parse_feed(
                     "title": title,
                     "published_at": published_at,
                     "external_id": external_id,
+                    "description": description,
+                    "content": content_text,
+                    "image_url": image_url,
                 }
             )
         except ValidationError:
