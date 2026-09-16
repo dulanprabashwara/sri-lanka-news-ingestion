@@ -60,6 +60,51 @@ def test_discovers_unique_hiru_articles_and_converts_listing_time() -> None:
     assert candidates[1].published_at == datetime(2026, 8, 30, 4, 14, tzinfo=UTC)
 
 
+def test_falls_back_to_latest_sinhala_sitemap_when_listing_returns_403() -> None:
+    index = (FIXTURES / "hiru-news-sinhala-sitemap-index.xml").read_bytes()
+    sitemap = (FIXTURES / "hiru-news-sinhala-sitemap.xml").read_bytes()
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        if str(request.url) == LISTING_URL:
+            return httpx.Response(403, request=request)
+        if request.url.path == "/sitemap.xml":
+            return httpx.Response(
+                200,
+                headers={"Content-Type": "text/html; charset=UTF-8"},
+                content=index,
+                request=request,
+            )
+        if request.url.path == "/sitemaps/sinhala-244000.xml":
+            return httpx.Response(
+                200,
+                headers={"Content-Type": "text/xml; charset=UTF-8"},
+                content=sitemap,
+                request=request,
+            )
+        return httpx.Response(404, request=request)
+
+    with HttpFetcher(settings(), transport=httpx.MockTransport(handler)) as fetcher:
+        candidates = HiruNewsSinhalaAdapter(
+            fetcher,
+            listing_url=LISTING_URL,
+            now=lambda: datetime(2026, 9, 16, 12, 0, tzinfo=UTC),
+        ).discover_recent()
+
+    assert requested == [
+        LISTING_URL,
+        "https://www.hirunews.lk/sitemap.xml",
+        "https://www.hirunews.lk/sitemaps/sinhala-244000.xml",
+    ]
+    assert [str(candidate.url) for candidate in candidates] == [
+        ARTICLE_URL,
+        "https://www.hirunews.lk/sports/485745/fixture-sports-story",
+    ]
+    assert candidates[0].title == "ගං ඉවුරෙන් හමුවූ පරීක්ෂණ පුවත"
+    assert candidates[0].discovered_at == datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
+
+
 def test_extracts_hiru_article_and_preserves_sinhala_unicode() -> None:
     markup = (FIXTURES / "hiru-news-sinhala-article.html").read_bytes()
     with HttpFetcher(settings(), transport=response(markup)) as fetcher:

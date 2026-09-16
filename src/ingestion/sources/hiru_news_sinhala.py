@@ -1,9 +1,10 @@
 import html
 import re
+import xml.etree.ElementTree as ET
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, ClassVar
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
@@ -15,7 +16,7 @@ from ingestion.extraction import (
     extract_texts,
     parse_html,
 )
-from ingestion.http import HttpFetcher
+from ingestion.http import HttpFetcher, HttpStatusError
 from ingestion.models import DiscoveryCandidate, ExtractedArticle, Language, NormalizedArticle
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
@@ -47,6 +48,10 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
         re.IGNORECASE,
     )
     ACCEPTED_TYPES: ClassVar[frozenset[str]] = frozenset({"text/html"})
+    ACCEPTED_SITEMAP_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {"application/xml", "text/xml", "text/html"}
+    )
+    SINHALA_SITEMAP_PATTERN = re.compile(r"/sitemaps/sinhala-(?P<offset>\d+)\.xml$")
 
     def __init__(
         self,
@@ -64,9 +69,15 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
-        response = self._fetcher.fetch(
-            self._listing_url, accepted_content_types=self.ACCEPTED_TYPES
-        )
+        try:
+            response = self._fetcher.fetch(
+                self._listing_url, accepted_content_types=self.ACCEPTED_TYPES
+            )
+        except HttpStatusError as error:
+            if error.status_code != 403:
+                raise
+            return self._discover_from_sitemap()
+
         document = parse_html(response.text)
         discovered_at = self._now()
         candidates: list[DiscoveryCandidate] = []
@@ -103,6 +114,97 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
         if not candidates:
             raise HiruNewsSinhalaExtractionError("Hiru News listing contained no article links.")
         return tuple(candidates)
+
+    def _discover_from_sitemap(self) -> tuple[DiscoveryCandidate, ...]:
+        index_url = urljoin(self._listing_url, "/sitemap.xml")
+        index = self._fetcher.fetch(
+            index_url,
+            accepted_content_types=self.ACCEPTED_SITEMAP_TYPES,
+        )
+        root = self._parse_sitemap(index.content, "index")
+        segments: list[tuple[int, str]] = []
+        for element in root.iter():
+            if self._local_name(element.tag) != "loc" or not element.text:
+                continue
+            try:
+                segment_url = canonicalize_url(element.text.strip(), base_url=index.final_url)
+            except UrlNormalizationError:
+                continue
+            match = self.SINHALA_SITEMAP_PATTERN.fullmatch(urlsplit(segment_url).path)
+            if match:
+                segments.append((int(match.group("offset")), segment_url))
+        if not segments:
+            raise HiruNewsSinhalaExtractionError(
+                "Hiru News sitemap index contained no Sinhala news sitemap."
+            )
+
+        latest_url = max(segments, key=lambda item: item[0])[1]
+        sitemap = self._fetcher.fetch(
+            latest_url,
+            accepted_content_types=self.ACCEPTED_SITEMAP_TYPES,
+        )
+        sitemap_root = self._parse_sitemap(sitemap.content, "Sinhala news")
+        discovered_at = self._now()
+        entries: list[tuple[str, str | None]] = []
+        for item in sitemap_root.iter():
+            if self._local_name(item.tag) != "url":
+                continue
+            article_url: str | None = None
+            title: str | None = None
+            for value in item.iter():
+                local_name = self._local_name(value.tag)
+                if local_name == "loc" and value.text:
+                    article_url = value.text.strip()
+                elif local_name == "title" and value.text:
+                    candidate_title = " ".join(html.unescape(value.text).split())
+                    if 0 < len(candidate_title) <= 1_000:
+                        title = candidate_title
+            if article_url:
+                entries.append((article_url, title))
+
+        candidates: list[DiscoveryCandidate] = []
+        seen: set[str] = set()
+        for raw_url, title in reversed(entries):
+            try:
+                url = canonicalize_url(raw_url, base_url=sitemap.final_url)
+            except UrlNormalizationError:
+                continue
+            parsed = urlsplit(url)
+            if (
+                parsed.hostname not in {"hirunews.lk", "www.hirunews.lk"}
+                or not self.ARTICLE_PATH.fullmatch(parsed.path)
+                or url in seen
+            ):
+                continue
+            candidates.append(
+                DiscoveryCandidate.model_validate(
+                    {
+                        "source_slug": self.source_slug,
+                        "url": url,
+                        "title": title,
+                        "discovered_at": discovered_at,
+                    }
+                )
+            )
+            seen.add(url)
+        if not candidates:
+            raise HiruNewsSinhalaExtractionError(
+                "Hiru News Sinhala sitemap contained no article links."
+            )
+        return tuple(candidates)
+
+    @staticmethod
+    def _parse_sitemap(content: bytes, description: str) -> ET.Element:
+        try:
+            return ET.fromstring(content)
+        except ET.ParseError as error:
+            raise HiruNewsSinhalaExtractionError(
+                f"Hiru News {description} sitemap is malformed."
+            ) from error
+
+    @staticmethod
+    def _local_name(tag: str) -> str:
+        return tag.rsplit("}", 1)[-1]
 
     @staticmethod
     def _card_title(anchor: Tag) -> str | None:

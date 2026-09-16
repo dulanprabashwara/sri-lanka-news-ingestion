@@ -1,5 +1,6 @@
 import html
 import json
+import re
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta, timezone
@@ -11,7 +12,6 @@ from pydantic import ValidationError
 from ingestion.extraction import (
     HtmlExtractionError,
     extract_canonical_url,
-    extract_text,
     extract_texts,
     parse_feed,
     parse_html,
@@ -35,7 +35,26 @@ class TheIslandExtractionError(PublisherExtractionError):
 class TheIslandAdapter(SourceAdapter):
     SOURCE_SLUG = "the-island"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
-    TITLE_SELECTOR = "h1.tdb-title-text, h1.entry-title"
+    TITLE_SELECTORS = (
+        "h1.tdb-title-text",
+        "h1.entry-title",
+        "article h1",
+        "main h1",
+    )
+    INVALID_TITLES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "access denied",
+            "forbidden",
+            "just a moment...",
+            "the island",
+            "the island newspaper",
+            "you are being redirected...",
+        }
+    )
+    SITE_SUFFIX = re.compile(
+        r"\s+[|\-\u2013\u2014]\s+(?:the\s+island(?:\s+newspaper)?)$",
+        re.IGNORECASE,
+    )
     BODY_SELECTORS = (
         "div.tdb-block-inner.td-fix-index > p",
         "div.td-post-content p",
@@ -143,14 +162,48 @@ class TheIslandAdapter(SourceAdapter):
 
     def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
         headline = data.get("headline")
-        if isinstance(headline, str) and headline.strip():
-            return html.unescape(headline).strip()
-        try:
-            title = extract_text(document, self.TITLE_SELECTOR)
-        except HtmlExtractionError as error:
-            raise TheIslandExtractionError("The Island article title is missing.") from error
-        assert title is not None
-        return title
+        if isinstance(headline, str):
+            normalized = self._normalize_title(headline)
+            if normalized:
+                return normalized
+
+        for selector in self.TITLE_SELECTORS:
+            element = document.select_one(selector)
+            if element is None:
+                continue
+            normalized = self._normalize_title(element.get_text(" ", strip=True))
+            if normalized:
+                return normalized
+
+        open_graph = document.select_one("meta[property='og:title']")
+        if open_graph is not None:
+            content = open_graph.get("content")
+            if isinstance(content, list):
+                content = content[0] if content else None
+            if isinstance(content, str):
+                normalized = self._normalize_title(content)
+                if normalized:
+                    return normalized
+
+        if document.title is not None:
+            normalized = self._normalize_title(document.title.get_text(" ", strip=True))
+            if normalized:
+                return normalized
+
+        raise TheIslandExtractionError("The Island article title is missing.")
+
+    @classmethod
+    def _normalize_title(cls, value: str) -> str | None:
+        normalized = " ".join(html.unescape(value).split()).strip()
+        normalized = cls.SITE_SUFFIX.sub("", normalized).strip()
+        if (
+            not normalized
+            or len(normalized) > 1_000
+            or normalized.casefold() in cls.INVALID_TITLES
+            or not any(character.isalnum() for character in normalized)
+        ):
+            return None
+        return normalized
 
     def _body(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
         article_body = data.get("articleBody")

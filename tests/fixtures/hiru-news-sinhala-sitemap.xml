@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="https://www.google.com/schemas/sitemap-news/0.9">
+  <url>
+    <loc>https://hirunews.lk/485779/fixture-river-story</loc>
+    <news:news><news:title>ගං ඉවුරෙන් හමුවූ පරීක්ෂණ පුවත</news:title></news:news>
+  </url>
+  <url>
+    <loc>https://www.hirunews.lk/sports/485745/fixture-sports-story</loc>
+    <news:news><news:title>ක්‍රීඩා පුවත</news:title></news:news>
+  </url>
+  <url>
+    <loc>https://hirunews.lk/485779/fixture-river-story?utm_source=sitemap</loc>
+    <news:news><news:title>ගං ඉවුරෙන් හමුවූ පරීක්ෂණ පුවත</news:title></news:news>
+  </url>
+</urlset>
