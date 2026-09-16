@@ -4,6 +4,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from apscheduler.schedulers.background import BlockingScheduler
@@ -15,6 +16,14 @@ from ingestion.config import Settings
 from ingestion.http import HttpFetcher
 from ingestion.runner import run_once
 from ingestion.sources import SourceAdapter
+
+
+@dataclass
+class _CycleMetrics:
+    sources_processed: int = 0
+    articles_discovered: int = 0
+    articles_submitted: int = 0
+    failed_sources: int = 0
 
 
 def _heartbeat_worker(
@@ -61,6 +70,45 @@ def run_scheduled_job(
     trigger_id: str | None = None,
 ) -> None:
     logger = logging.getLogger(f"ingestion.scheduler.{source_slug}")
+    started_at = time.perf_counter()
+    metrics = _CycleMetrics()
+    logger.info("ingestion_cycle_started source=%s", source_slug)
+
+    try:
+        _run_scheduled_job(
+            source_slug,
+            adapter_factory,
+            settings,
+            trigger_type,
+            trigger_id,
+            logger,
+            metrics,
+        )
+    except Exception:
+        metrics.failed_sources = 1
+        raise
+    finally:
+        duration_seconds = max(0.0, time.perf_counter() - started_at)
+        logger.info(
+            "ingestion_cycle_completed duration_seconds=%.3f sources_processed=%d "
+            "articles_discovered=%d articles_submitted=%d failed_sources=%d",
+            duration_seconds,
+            metrics.sources_processed,
+            metrics.articles_discovered,
+            metrics.articles_submitted,
+            metrics.failed_sources,
+        )
+
+
+def _run_scheduled_job(
+    source_slug: str,
+    adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
+    settings: Settings,
+    trigger_type: IngestionTriggerType,
+    trigger_id: str | None,
+    logger: logging.Logger,
+    metrics: _CycleMetrics,
+) -> None:
     worker_id = str(uuid.uuid4())
 
     with (
@@ -75,6 +123,7 @@ def run_scheduled_job(
                 worker_id=worker_id,
             )
         except BackendClientError as error:
+            metrics.failed_sources = 1
             logger.warning("claim_request_failed source=%s error=%s", source_slug, error)
             if trigger_id:
                 # If backend is down, we could just retry later
@@ -96,6 +145,7 @@ def run_scheduled_job(
 
         run_id = claim_resp.run_id
         if not run_id:
+            metrics.failed_sources = 1
             logger.error("claim_succeeded_but_no_run_id source=%s", source_slug)
             if trigger_id:
                 backend_client.trigger_fail(trigger_id)
@@ -117,7 +167,13 @@ def run_scheduled_job(
         )
         heartbeat_thread.start()
 
-        adapter = adapter_factory(source_slug, fetcher, settings)
+        try:
+            adapter = adapter_factory(source_slug, fetcher, settings)
+        except Exception:
+            metrics.failed_sources = 1
+            raise
+
+        metrics.sources_processed = 1
 
         try:
             summary = run_once(
@@ -127,6 +183,9 @@ def run_scheduled_job(
                 logger=logger,
                 abort_event=stop_event,
             )
+            metrics.articles_discovered = summary.discovered
+            metrics.articles_submitted = summary.processed
+            metrics.failed_sources = int(summary.failed > 0)
 
             stop_event.set()
             heartbeat_thread.join(timeout=2.0)
@@ -160,6 +219,7 @@ def run_scheduled_job(
                 summary.discovered,
             )
         except Exception as error:
+            metrics.failed_sources = 1
             logger.exception("run_unexpected_error source=%s run_id=%s", source_slug, run_id)
             stop_event.set()
             heartbeat_thread.join(timeout=2.0)
