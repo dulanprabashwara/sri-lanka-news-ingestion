@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from pathlib import Path
 
 import httpx
@@ -59,7 +60,10 @@ def test_discovers_unique_newsfirst_article_links_from_latest_page() -> None:
     discovered_at = datetime(2026, 8, 30, 2, 0, tzinfo=UTC)
     with HttpFetcher(settings(), transport=response(markup)) as fetcher:
         candidates = NewsFirstAdapter(
-            fetcher, listing_url=LISTING_URL, now=lambda: discovered_at
+            fetcher,
+            listing_url=LISTING_URL,
+            now=lambda: discovered_at,
+            request_delay_seconds=0,
         ).discover_recent()
 
     assert len(candidates) == 2
@@ -70,7 +74,7 @@ def test_discovers_unique_newsfirst_article_links_from_latest_page() -> None:
 def test_extracts_newsfirst_fields_and_converts_colombo_time_to_utc() -> None:
     markup = (FIXTURES / "newsfirst-article.html").read_bytes()
     with HttpFetcher(settings(), transport=response(markup)) as fetcher:
-        adapter = NewsFirstAdapter(fetcher, listing_url=LISTING_URL)
+        adapter = NewsFirstAdapter(fetcher, listing_url=LISTING_URL, request_delay_seconds=0)
         article = adapter.normalize(adapter.extract_article(reference()))
 
     assert article.title == "Fixture Ocean Story"
@@ -86,12 +90,12 @@ def test_extracts_newsfirst_fields_and_converts_colombo_time_to_utc() -> None:
 def test_rejects_newsfirst_article_without_body() -> None:
     markup = (FIXTURES / "newsfirst-malformed-article.html").read_bytes()
     with HttpFetcher(settings(), transport=response(markup)) as fetcher:
-        adapter = NewsFirstAdapter(fetcher, listing_url=LISTING_URL)
+        adapter = NewsFirstAdapter(fetcher, listing_url=LISTING_URL, request_delay_seconds=0)
         with pytest.raises(NewsFirstExtractionError, match="body is missing"):
             adapter.extract_article(reference())
 
 
-def test_spaces_first_article_request_after_discovery() -> None:
+def test_spaces_initial_discovery_and_first_article_request() -> None:
     listing = (FIXTURES / "newsfirst-latest.html").read_bytes()
     article = (FIXTURES / "newsfirst-article.html").read_bytes()
     clock = FakeClock()
@@ -116,7 +120,7 @@ def test_spaces_first_article_request_after_discovery() -> None:
         candidate = adapter.discover_recent()[0]
         normalized = adapter.normalize(adapter.extract_article(candidate))
 
-    assert clock.sleeps == [3]
+    assert clock.sleeps == [3, 3]
     assert normalized.title == "Fixture Ocean Story"
 
 
@@ -144,7 +148,7 @@ def test_retries_429_using_retry_after_header(
         adapter = NewsFirstAdapter(
             fetcher,
             listing_url=LISTING_URL,
-            request_delay_seconds=3,
+            request_delay_seconds=0,
             max_retries=1,
             sleep=clock.sleep,
             monotonic=clock.monotonic,
@@ -158,6 +162,141 @@ def test_retries_429_using_retry_after_header(
     assert "newsfirst_rate_limited" in caplog.text
     assert "retry_after_seconds=7.000" in caplog.text
     assert "newsfirst_article_fetch_retried" in caplog.text
+
+
+def test_discovery_retries_429_using_numeric_retry_after(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    listing = (FIXTURES / "newsfirst-latest.html").read_bytes()
+    clock = FakeClock()
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(429, headers={"Retry-After": "7"}, request=request)
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "text/html; charset=UTF-8"},
+            content=listing,
+            request=request,
+        )
+
+    caplog.set_level("INFO", logger="ingestion.sources.newsfirst")
+    with HttpFetcher(settings(), transport=httpx.MockTransport(handler)) as fetcher:
+        candidates = NewsFirstAdapter(
+            fetcher,
+            listing_url=LISTING_URL,
+            request_delay_seconds=0,
+            max_retries=1,
+            sleep=clock.sleep,
+            monotonic=clock.monotonic,
+            jitter=lambda _start, _end: 0,
+        ).discover_recent()
+
+    assert attempts == 2
+    assert clock.sleeps == [7]
+    assert len(candidates) == 2
+    assert "newsfirst_rate_limited phase=discovery" in caplog.text
+    assert "retry_after_seconds=7.000" in caplog.text
+    assert "newsfirst_discovery_fetch_retried" in caplog.text
+
+
+def test_discovery_retries_429_using_http_date_retry_after() -> None:
+    listing = (FIXTURES / "newsfirst-latest.html").read_bytes()
+    clock = FakeClock()
+    now = datetime(2026, 9, 17, 4, 0, tzinfo=UTC)
+    retry_at = format_datetime(now + timedelta(seconds=9), usegmt=True)
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(429, headers={"Retry-After": retry_at}, request=request)
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "text/html; charset=UTF-8"},
+            content=listing,
+            request=request,
+        )
+
+    with HttpFetcher(settings(), transport=httpx.MockTransport(handler)) as fetcher:
+        candidates = NewsFirstAdapter(
+            fetcher,
+            listing_url=LISTING_URL,
+            now=lambda: now,
+            request_delay_seconds=0,
+            max_retries=1,
+            sleep=clock.sleep,
+            monotonic=clock.monotonic,
+            jitter=lambda _start, _end: 0,
+        ).discover_recent()
+
+    assert attempts == 2
+    assert clock.sleeps == [9]
+    assert len(candidates) == 2
+
+
+def test_discovery_429_without_retry_after_uses_bounded_backoff() -> None:
+    listing = (FIXTURES / "newsfirst-latest.html").read_bytes()
+    clock = FakeClock()
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts <= 2:
+            return httpx.Response(429, request=request)
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "text/html; charset=UTF-8"},
+            content=listing,
+            request=request,
+        )
+
+    with HttpFetcher(settings(), transport=httpx.MockTransport(handler)) as fetcher:
+        candidates = NewsFirstAdapter(
+            fetcher,
+            listing_url=LISTING_URL,
+            request_delay_seconds=0,
+            max_retries=2,
+            sleep=clock.sleep,
+            monotonic=clock.monotonic,
+            jitter=lambda _start, _end: 0,
+        ).discover_recent()
+
+    assert attempts == 3
+    assert clock.sleeps == [2, 4]
+    assert len(candidates) == 2
+
+
+def test_discovery_429_retries_stop_after_configured_maximum() -> None:
+    clock = FakeClock()
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(429, request=request)
+
+    with HttpFetcher(settings(), transport=httpx.MockTransport(handler)) as fetcher:
+        adapter = NewsFirstAdapter(
+            fetcher,
+            listing_url=LISTING_URL,
+            request_delay_seconds=0,
+            max_retries=2,
+            sleep=clock.sleep,
+            monotonic=clock.monotonic,
+            jitter=lambda _start, _end: 0,
+        )
+        with pytest.raises(HttpStatusError) as captured:
+            adapter.discover_recent()
+
+    assert captured.value.status_code == 429
+    assert attempts == 3
+    assert clock.sleeps == [2, 4]
 
 
 def test_429_without_retry_after_uses_bounded_exponential_backoff() -> None:

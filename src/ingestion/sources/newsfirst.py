@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
@@ -73,17 +73,14 @@ class NewsFirstAdapter(SourceAdapter):
         self._sleep = sleep
         self._monotonic = monotonic
         self._jitter = jitter
-        self._last_request_at: float | None = None
+        self._last_request_at: float | None = self._monotonic()
 
     @property
     def source_slug(self) -> str:
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
-        response = self._fetcher.fetch(
-            self._listing_url, accepted_content_types=self.ACCEPTED_TYPES
-        )
-        self._last_request_at = self._monotonic()
+        response = self._fetch_with_rate_limit(self._listing_url, phase="discovery")
         document = parse_html(response.text)
         discovered_at = self._now()
         candidates: list[DiscoveryCandidate] = []
@@ -113,7 +110,7 @@ class NewsFirstAdapter(SourceAdapter):
         return tuple(candidates)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
-        response = self._fetch_article(str(candidate.url))
+        response = self._fetch_with_rate_limit(str(candidate.url), phase="article")
         document = parse_html(response.text)
         data = news_article_data(document)
         authors, published_at = self._byline(document, data)
@@ -141,12 +138,18 @@ class NewsFirstAdapter(SourceAdapter):
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
         return NormalizedArticle.model_validate(article.model_dump())
 
-    def _fetch_article(self, url: str) -> FetchResponse:
+    def _fetch_with_rate_limit(
+        self,
+        url: str,
+        *,
+        phase: Literal["discovery", "article"],
+    ) -> FetchResponse:
         for attempt in range(self._max_retries + 1):
             self._wait_for_spacing()
             if attempt > 0:
                 logger.info(
-                    "newsfirst_article_fetch_retried url=%s retry_attempt=%d",
+                    "newsfirst_%s_fetch_retried url=%s retry_attempt=%d",
+                    phase,
                     url,
                     attempt,
                 )
@@ -169,8 +172,9 @@ class NewsFirstAdapter(SourceAdapter):
                     retry_after if retry_after is not None else backoff,
                 )
                 logger.warning(
-                    "newsfirst_rate_limited url=%s retry_after_seconds=%s "
+                    "newsfirst_rate_limited phase=%s url=%s retry_after_seconds=%s "
                     "retry_delay_seconds=%.3f retry_attempt=%d max_retries=%d",
+                    phase,
                     url,
                     f"{retry_after:.3f}" if retry_after is not None else "none",
                     delay,
@@ -184,7 +188,7 @@ class NewsFirstAdapter(SourceAdapter):
                 self._last_request_at = self._monotonic()
                 return response
 
-        raise AssertionError("NewsFirst article retry loop exhausted unexpectedly")
+        raise AssertionError("NewsFirst request retry loop exhausted unexpectedly")
 
     def _wait_for_spacing(self) -> None:
         if self._last_request_at is None or self._request_delay_seconds <= 0:
@@ -194,8 +198,7 @@ class NewsFirstAdapter(SourceAdapter):
         if remaining > 0:
             self._sleep(remaining)
 
-    @staticmethod
-    def _retry_after_seconds(value: str | None) -> float | None:
+    def _retry_after_seconds(self, value: str | None) -> float | None:
         if value is None or not value.strip():
             return None
         stripped = value.strip()
@@ -208,7 +211,10 @@ class NewsFirstAdapter(SourceAdapter):
                 return None
             if retry_at.tzinfo is None or retry_at.utcoffset() is None:
                 retry_at = retry_at.replace(tzinfo=UTC)
-            return max(0.0, (retry_at.astimezone(UTC) - datetime.now(UTC)).total_seconds())
+            return max(
+                0.0,
+                (retry_at.astimezone(UTC) - self._now().astimezone(UTC)).total_seconds(),
+            )
 
     def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
         headline = data.get("headline")
