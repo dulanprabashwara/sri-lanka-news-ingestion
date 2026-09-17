@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>The Island</title>
+    <link>http://island.lk</link>
+    <item>
+      <title>Rich Island Feed Story</title>
+      <link>http://island.lk/rich-feed-story/</link>
+      <guid isPermaLink="false">http://island.lk/?p=1001</guid>
+      <dc:creator><![CDATA[Island Reporter]]></dc:creator>
+      <pubDate>Thu, 17 Sep 2026 00:49:27 +0000</pubDate>
+      <category><![CDATA[News]]></category>
+      <category><![CDATA[Featured]]></category>
+      <description><![CDATA[The publisher supplied summary explains the important development and gives readers useful context before opening the complete report.]]></description>
+      <media:thumbnail url="http://island.lk/wp-content/uploads/2026/09/feed-story.jpg" />
+      <content:encoded><![CDATA[
+        <script>this must never become article content</script>
+        <p>Rich Island feed paragraph one contains meaningful reporting about a current public event in Sri Lanka and provides enough detail to stand independently.</p>
+        <p>Rich Island feed paragraph two adds the response from officials, explains what happens next, and supplies further context for readers following the development.</p>
+        <p>Continue Reading</p>
+      ]]></content:encoded>
+    </item>
+    <item>
+      <title>Second Island Feed Story</title>
+      <link>https://island.lk/second-feed-story/</link>
+      <guid isPermaLink="false">http://island.lk/?p=1002</guid>
+      <dc:creator><![CDATA[Second Reporter]]></dc:creator>
+      <pubDate>Wed, 16 Sep 2026 23:49:27 +0000</pubDate>
+      <category><![CDATA[Business]]></category>
+      <description><![CDATA[A useful second publisher summary.]]></description>
+      <content:encoded><![CDATA[
+        <p>The second article begins with a substantial paragraph containing verified publisher reporting and enough information for the fallback path.</p>
+        <p>Its second paragraph supplies additional detail so the normalized body clearly exceeds the minimum quality requirement for submission.</p>
+      ]]></content:encoded>
+    </item>
+    <item>
+      <title>Duplicate Rich Island Feed Story</title>
+      <link>https://island.lk/rich-feed-story/</link>
+      <pubDate>Wed, 16 Sep 2026 22:49:27 +0000</pubDate>
+      <content:encoded><![CDATA[<p>This duplicate entry must not be processed.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>
