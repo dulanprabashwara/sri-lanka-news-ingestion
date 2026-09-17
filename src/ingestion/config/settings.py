@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     newsfirst_request_delay_seconds: float = Field(default=3.0, ge=0, le=60)
     newsfirst_max_retries: int = Field(default=2, ge=0, le=5)
     hiru_news_sinhala_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.hirunews.lk/")
+    lakbima_feed_url: AnyHttpUrl = AnyHttpUrl("https://lakbima.news/feed/")
     newswire_feed_url: AnyHttpUrl = AnyHttpUrl("https://www.newswire.lk/feed/")
     the_island_feed_url: AnyHttpUrl = AnyHttpUrl("http://island.lk/feed/")
     divaina_feed_url: AnyHttpUrl = AnyHttpUrl("https://www.divaina.lk/feed")

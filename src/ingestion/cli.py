@@ -10,6 +10,7 @@ from ingestion.sources import (
     DailyMirrorAdapter,
     DivainaAdapter,
     HiruNewsSinhalaAdapter,
+    LakbimaNewsAdapter,
     LankadeepaAdapter,
     NewsFirstAdapter,
     NewswireAdapter,
@@ -33,6 +34,8 @@ def _adapter(source_slug: str, fetcher: HttpFetcher, settings: Settings) -> Sour
             fetcher,
             listing_url=str(settings.hiru_news_sinhala_listing_url),
         )
+    if source_slug == "lakbima-news":
+        return LakbimaNewsAdapter(fetcher, feed_url=str(settings.lakbima_feed_url))
     if source_slug == "newswire":
         return NewswireAdapter(fetcher, feed_url=str(settings.newswire_feed_url))
     if source_slug == "the-island":
@@ -83,6 +86,10 @@ def main_newsfirst() -> int:
 
 def main_hiru_news_sinhala() -> int:
     return _run("hiru-news-sinhala")
+
+
+def main_lakbima_news() -> int:
+    return _run("lakbima-news")
 
 
 def main_newswire() -> int:

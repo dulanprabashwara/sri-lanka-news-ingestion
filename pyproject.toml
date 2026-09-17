@@ -20,6 +20,7 @@ dependencies = [
 ingest-daily-mirror = "ingestion.cli:main"
 ingest-newsfirst = "ingestion.cli:main_newsfirst"
 ingest-hiru-news-sinhala = "ingestion.cli:main_hiru_news_sinhala"
+ingest-lakbima-news = "ingestion.cli:main_lakbima_news"
 ingest-newswire = "ingestion.cli:main_newswire"
 ingest-the-island = "ingestion.cli:main_the_island"
 ingest-divaina = "ingestion.cli:main_divaina"

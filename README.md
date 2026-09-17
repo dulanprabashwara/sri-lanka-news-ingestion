@@ -119,13 +119,16 @@ Each adapter governs four core operations:
 
 ## Current Publisher Support
 
-The ingestion service currently includes 7 active publisher adapters:
+The ingestion service includes the following publisher adapters. Hiru remains available for
+historical compatibility, but production scheduling is disabled because its first-party endpoints
+return HTTP 403 from the Azure ingestion environment.
 
 | Publisher Name | Source Slug | Primary Language | Ingestion Method | CLI Script Entrypoint |
 |---|---|---|---|---|
 | **Daily Mirror** | `daily-mirror` | English | RSS Feed + HTML Body | `ingest-daily-mirror` |
 | **NewsFirst** | `newsfirst` | English | HTML Listing + HTML Body | `ingest-newsfirst` |
-| **Hiru News** | `hiru-news-sinhala` | Sinhala | HTML Listing + HTML Body | `ingest-hiru-news-sinhala` |
+| **Hiru News** (ingestion inactive) | `hiru-news-sinhala` | Sinhala | HTML Listing + HTML Body | `ingest-hiru-news-sinhala` |
+| **Lakbima News** | `lakbima-news` | Sinhala | RSS Feed + HTML Body/RSS fallback | `ingest-lakbima-news` |
 | **Ada Derana** | `ada-derana-sinhala` | Sinhala | RSS Feed + HTML Body | `ingest-ada-derana-sinhala` |
 | **The Island** | `the-island` | English | RSS Feed + HTML Body | `ingest-the-island` |
 | **Divaina** | `divaina` | Sinhala | RSS Feed + HTML Body | `ingest-divaina` |
@@ -267,6 +270,9 @@ ingest-newsfirst
 
 # Execute single-shot ingestion for Hiru News Sinhala
 ingest-hiru-news-sinhala
+
+# Execute single-shot ingestion for Lakbima News
+ingest-lakbima-news
 
 # Start background scheduler daemon
 ingest-scheduler

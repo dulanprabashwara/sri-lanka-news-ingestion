@@ -7,6 +7,7 @@ from ingestion.sources.hiru_news_sinhala import (
     HiruNewsSinhalaAdapter,
     HiruNewsSinhalaExtractionError,
 )
+from ingestion.sources.lakbima_news import LakbimaNewsAdapter, LakbimaNewsExtractionError
 from ingestion.sources.lankadeepa import LankadeepaAdapter, LankadeepaExtractionError
 from ingestion.sources.newsfirst import NewsFirstAdapter, NewsFirstExtractionError
 from ingestion.sources.newswire import NewswireAdapter, NewswireExtractionError
@@ -19,6 +20,8 @@ __all__ = [
     "DivainaExtractionError",
     "HiruNewsSinhalaAdapter",
     "HiruNewsSinhalaExtractionError",
+    "LakbimaNewsAdapter",
+    "LakbimaNewsExtractionError",
     "LankadeepaAdapter",
     "LankadeepaExtractionError",
     "NewsFirstAdapter",

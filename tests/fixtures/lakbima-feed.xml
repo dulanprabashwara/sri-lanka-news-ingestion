@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Lakbima News</title>
+    <link>https://lakbima.news/</link>
+    <item>
+      <title>නවතම ලක්බිම පුවත</title>
+      <link>http://www.lakbima.news/sample-story?utm_source=test</link>
+      <guid>https://lakbima.news/?p=123</guid>
+      <pubDate>Wed, 17 Sep 2026 03:20:51 +0530</pubDate>
+      <dc:creator>Pathum Dissanayake</dc:creator>
+      <category>Latest News</category>
+      <description><![CDATA[මෙය පුවත පිළිබඳ ප්‍රකාශකයා ලබාදුන් සාරාංශයකි.]]></description>
+      <content:encoded><![CDATA[
+        <p>මෙය ලක්බිම පුවතේ පළමු වැදගත් ඡේදය වන අතර පාඨකයාට සිදුවීම පිළිබඳ පැහැදිලි තොරතුරු සපයයි.</p>
+        <p>දෙවන ඡේදයෙන් සිදුවීමට අදාළ වැඩිදුර විස්තර සහ නිල ප්‍රකාශ ඇතුළත් කර තිබේ.</p>
+        <p>තෙවන ඡේදය පුවතේ පසුබිම සහ ඉදිරි ක්‍රියාමාර්ග පිළිබඳව සවිස්තරව පැහැදිලි කරයි.</p>
+      ]]></content:encoded>
+    </item>
+    <item>
+      <title>අනුපිටපත් පුවත</title>
+      <link>https://lakbima.news/sample-story/</link>
+      <pubDate>Wed, 17 Sep 2026 03:10:51 +0530</pubDate>
+    </item>
+    <item><title>සබැඳියක් නොමැති පුවත</title></item>
+  </channel>
+</rss>
