@@ -22,7 +22,12 @@ def _adapter(source_slug: str, fetcher: HttpFetcher, settings: Settings) -> Sour
     if source_slug == "daily-mirror":
         return DailyMirrorAdapter(fetcher, feed_url=str(settings.daily_mirror_feed_url))
     if source_slug == "newsfirst":
-        return NewsFirstAdapter(fetcher, listing_url=str(settings.newsfirst_listing_url))
+        return NewsFirstAdapter(
+            fetcher,
+            listing_url=str(settings.newsfirst_listing_url),
+            request_delay_seconds=settings.newsfirst_request_delay_seconds,
+            max_retries=settings.newsfirst_max_retries,
+        )
     if source_slug == "hiru-news-sinhala":
         return HiruNewsSinhalaAdapter(
             fetcher,

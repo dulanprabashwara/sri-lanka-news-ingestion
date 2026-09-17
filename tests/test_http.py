@@ -47,13 +47,16 @@ def test_fetches_text_with_user_agent_and_follows_bounded_redirects() -> None:
 
 
 def test_maps_non_success_status_to_domain_error() -> None:
-    transport = httpx.MockTransport(lambda _request: httpx.Response(503))
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(503, headers={"Retry-After": "7"})
+    )
     with (
         HttpFetcher(settings(), transport=transport) as fetcher,
         pytest.raises(HttpStatusError) as captured,
     ):
         fetcher.fetch("https://news.example.com/feed")
     assert captured.value.status_code == 503
+    assert captured.value.headers["retry-after"] == "7"
 
 
 def test_maps_timeout_to_domain_error() -> None:

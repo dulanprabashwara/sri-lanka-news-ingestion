@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+
+
 class FetchError(RuntimeError):
     """Base error for expected HTTP fetching failures."""
 
@@ -15,10 +18,16 @@ class NetworkError(FetchError):
 
 
 class HttpStatusError(FetchError):
-    def __init__(self, status_code: int, url: str) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        url: str,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         super().__init__(f"HTTP {status_code} returned for {url}")
         self.status_code = status_code
         self.url = url
+        self.headers = {key.casefold(): value for key, value in (headers or {}).items()}
 
 
 class InvalidContentTypeError(FetchError):

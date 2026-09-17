@@ -1,7 +1,11 @@
 import html
+import logging
+import random
 import re
+import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, ClassVar
 from urllib.parse import urlsplit
 
@@ -15,7 +19,7 @@ from ingestion.extraction import (
     extract_texts,
     parse_html,
 )
-from ingestion.http import HttpFetcher
+from ingestion.http import FetchResponse, HttpFetcher, HttpStatusError
 from ingestion.models import DiscoveryCandidate, ExtractedArticle, Language, NormalizedArticle
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
 from ingestion.sources.base import PublisherExtractionError, SourceAdapter
@@ -30,6 +34,9 @@ from ingestion.sources.common import (
 
 class NewsFirstExtractionError(PublisherExtractionError):
     """Raised when NewsFirst markup lacks required article data."""
+
+
+logger = logging.getLogger(__name__)
 
 
 class NewsFirstAdapter(SourceAdapter):
@@ -52,10 +59,21 @@ class NewsFirstAdapter(SourceAdapter):
         *,
         listing_url: str,
         now: Callable[[], datetime] | None = None,
+        request_delay_seconds: float = 3.0,
+        max_retries: int = 2,
+        sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
+        jitter: Callable[[float, float], float] = random.uniform,
     ) -> None:
         self._fetcher = fetcher
         self._listing_url = listing_url
         self._now = now or (lambda: datetime.now(UTC))
+        self._request_delay_seconds = request_delay_seconds
+        self._max_retries = max_retries
+        self._sleep = sleep
+        self._monotonic = monotonic
+        self._jitter = jitter
+        self._last_request_at: float | None = None
 
     @property
     def source_slug(self) -> str:
@@ -65,6 +83,7 @@ class NewsFirstAdapter(SourceAdapter):
         response = self._fetcher.fetch(
             self._listing_url, accepted_content_types=self.ACCEPTED_TYPES
         )
+        self._last_request_at = self._monotonic()
         document = parse_html(response.text)
         discovered_at = self._now()
         candidates: list[DiscoveryCandidate] = []
@@ -94,9 +113,7 @@ class NewsFirstAdapter(SourceAdapter):
         return tuple(candidates)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
-        response = self._fetcher.fetch(
-            str(candidate.url), accepted_content_types=self.ACCEPTED_TYPES
-        )
+        response = self._fetch_article(str(candidate.url))
         document = parse_html(response.text)
         data = news_article_data(document)
         authors, published_at = self._byline(document, data)
@@ -123,6 +140,75 @@ class NewsFirstAdapter(SourceAdapter):
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
         return NormalizedArticle.model_validate(article.model_dump())
+
+    def _fetch_article(self, url: str) -> FetchResponse:
+        for attempt in range(self._max_retries + 1):
+            self._wait_for_spacing()
+            if attempt > 0:
+                logger.info(
+                    "newsfirst_article_fetch_retried url=%s retry_attempt=%d",
+                    url,
+                    attempt,
+                )
+            try:
+                response = self._fetcher.fetch(
+                    url,
+                    accepted_content_types=self.ACCEPTED_TYPES,
+                )
+            except HttpStatusError as error:
+                self._last_request_at = self._monotonic()
+                if error.status_code != 429:
+                    raise
+
+                retry_after = self._retry_after_seconds(error.headers.get("retry-after"))
+                backoff = min(30.0, 2.0 ** (attempt + 1))
+                if retry_after is None:
+                    backoff += self._jitter(0.0, min(1.0, backoff * 0.1))
+                delay = max(
+                    self._request_delay_seconds,
+                    retry_after if retry_after is not None else backoff,
+                )
+                logger.warning(
+                    "newsfirst_rate_limited url=%s retry_after_seconds=%s "
+                    "retry_delay_seconds=%.3f retry_attempt=%d max_retries=%d",
+                    url,
+                    f"{retry_after:.3f}" if retry_after is not None else "none",
+                    delay,
+                    attempt + 1,
+                    self._max_retries,
+                )
+                if attempt >= self._max_retries:
+                    raise
+                self._sleep(delay)
+            else:
+                self._last_request_at = self._monotonic()
+                return response
+
+        raise AssertionError("NewsFirst article retry loop exhausted unexpectedly")
+
+    def _wait_for_spacing(self) -> None:
+        if self._last_request_at is None or self._request_delay_seconds <= 0:
+            return
+        elapsed = self._monotonic() - self._last_request_at
+        remaining = self._request_delay_seconds - elapsed
+        if remaining > 0:
+            self._sleep(remaining)
+
+    @staticmethod
+    def _retry_after_seconds(value: str | None) -> float | None:
+        if value is None or not value.strip():
+            return None
+        stripped = value.strip()
+        try:
+            return max(0.0, float(stripped))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(stripped)
+            except (TypeError, ValueError, OverflowError):
+                return None
+            if retry_at.tzinfo is None or retry_at.utcoffset() is None:
+                retry_at = retry_at.replace(tzinfo=UTC)
+            return max(0.0, (retry_at.astimezone(UTC) - datetime.now(UTC)).total_seconds())
 
     def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
         headline = data.get("headline")

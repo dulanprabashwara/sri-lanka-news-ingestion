@@ -224,6 +224,8 @@ Configure `.env` using variable names from `.env.example`:
 | `INGESTION_HTTP_USER_AGENT` | User-Agent string for HTTP requests | `SriLankaNewsIngestion/0.1` |
 | `INGESTION_DAILY_MIRROR_FEED_URL` | Daily Mirror RSS feed URL | `https://www.dailymirror.lk/rss/breaking_news/108` |
 | `INGESTION_NEWSFIRST_LISTING_URL` | NewsFirst listing URL | `https://www.newsfirst.lk/latest` |
+| `INGESTION_NEWSFIRST_REQUEST_DELAY_SECONDS` | Minimum spacing between NewsFirst page requests | `3` |
+| `INGESTION_NEWSFIRST_MAX_RETRIES` | Maximum retries after a NewsFirst HTTP 429 | `2` |
 | `INGESTION_HIRU_NEWS_SINHALA_LISTING_URL` | Hiru News listing URL | `https://www.hirunews.lk/` |
 | `INGESTION_ADA_DERANA_SINHALA_FEED_URL` | Ada Derana Sinhala RSS URL | `https://sinhala.adaderana.lk/rss.php` |
 | `INGESTION_RUN_LIMIT` | Max articles fetched per run | `3` |

@@ -72,7 +72,7 @@ class HttpFetcher:
 
         final_url = str(response.url)
         if response.is_error:
-            raise HttpStatusError(response.status_code, final_url)
+            raise HttpStatusError(response.status_code, final_url, response.headers)
 
         content_type = response.headers.get("content-type", "").partition(";")[0].strip().casefold()
         if accepted_content_types is not None:
