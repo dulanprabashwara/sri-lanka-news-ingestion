@@ -1,8 +1,0 @@
-from bs4 import BeautifulSoup
-
-with open("island.html", encoding="utf-8") as f:
-    soup = BeautifulSoup(f.read(), "html.parser")
-els = soup.select("#mvp-content-main p")
-print("Found:", len(els), "paragraphs.")
-if els:
-    print("First para:", els[0].get_text(strip=True)[:100])
