@@ -9,3 +9,8 @@ __pycache__/
 build/
 dist/
 .env
+
+# Logs and scratch files
+*.log
+*.html
+!tests/fixtures/*.html
