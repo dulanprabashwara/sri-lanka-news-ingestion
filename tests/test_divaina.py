@@ -1,3 +1,5 @@
+"""Regression tests for Divaina feed discovery and Sinhala article extraction."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 

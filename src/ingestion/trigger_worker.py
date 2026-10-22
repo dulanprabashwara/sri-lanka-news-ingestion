@@ -1,3 +1,5 @@
+"""Poll the backend for admin-requested runs and execute each claimed trigger safely."""
+
 import logging
 import time
 import uuid
@@ -15,6 +17,8 @@ def trigger_worker_loop(
     adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
     settings: Settings,
 ) -> None:
+    """Continuously claim and synchronously execute backend-created manual triggers."""
+
     logger = logging.getLogger("ingestion.trigger_worker")
     logger.info("Starting manual trigger worker loop...")
 

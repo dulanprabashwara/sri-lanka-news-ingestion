@@ -1,3 +1,5 @@
+"""Reusable, policy-controlled HTTP fetching for publisher feeds and article pages."""
+
 from collections.abc import Collection
 from dataclasses import dataclass
 from types import TracebackType
@@ -17,6 +19,8 @@ from ingestion.http.errors import (
 
 @dataclass(frozen=True, slots=True)
 class FetchResponse:
+    """Immutable HTTP response data exposed to publisher adapters."""
+
     requested_url: str
     final_url: str
     status_code: int
@@ -54,6 +58,8 @@ class HttpFetcher:
         self.close()
 
     def close(self) -> None:
+        """Release pooled HTTP connections owned by this fetcher."""
+
         self._client.close()
 
     def fetch(
@@ -62,6 +68,8 @@ class HttpFetcher:
         *,
         accepted_content_types: Collection[str] | None = None,
     ) -> FetchResponse:
+        """Fetch one safe HTTP(S) URL and enforce status and content-type policy."""
+
         self._validate_url(url)
         try:
             response = self._client.get(url)

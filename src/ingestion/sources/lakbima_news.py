@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize Sinhala Lakbima News articles."""
+
 import html
 import json
 import logging
@@ -42,6 +44,8 @@ class _FeedMetadata:
 
 
 class LakbimaNewsAdapter(SourceAdapter):
+    """Use Lakbima RSS metadata with article-page fallbacks for Sinhala reports."""
+
     SOURCE_SLUG = "lakbima-news"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     ACCEPTED_FEED_TYPES: ClassVar[frozenset[str]] = frozenset(
@@ -87,9 +91,13 @@ class LakbimaNewsAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Lakbima News."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Convert recent Lakbima feed entries into discovery candidates."""
+
         response = self._fetcher.fetch(
             self._feed_url, accepted_content_types=self.ACCEPTED_FEED_TYPES
         )
@@ -122,6 +130,8 @@ class LakbimaNewsAdapter(SourceAdapter):
         return tuple(normalized)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Combine Lakbima feed metadata and page HTML into an extracted article."""
+
         request_url = self._canonical_article_url(str(candidate.url))
         try:
             response = self._fetcher.fetch(request_url, accepted_content_types={"text/html"})
@@ -167,6 +177,8 @@ class LakbimaNewsAdapter(SourceAdapter):
         )
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Lakbima fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _feed_fallback(

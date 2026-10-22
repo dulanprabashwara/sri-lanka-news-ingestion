@@ -1,3 +1,5 @@
+"""Verify one-run orchestration, counters, idempotency, and per-article failures."""
+
 from collections.abc import Sequence
 from datetime import UTC, datetime
 

@@ -1,3 +1,5 @@
+"""Regression tests for Lankadeepa listing discovery and article extraction."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 

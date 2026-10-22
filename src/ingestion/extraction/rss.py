@@ -1,3 +1,5 @@
+"""Parse RSS/Atom feeds into lightweight, validated article discovery candidates."""
+
 import calendar
 import html
 import re
@@ -6,8 +8,8 @@ from email.utils import parsedate_to_datetime
 from time import struct_time
 from typing import Any
 
-from bs4 import BeautifulSoup
 import feedparser
+from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from ingestion.models import DiscoveryCandidate
@@ -50,7 +52,9 @@ def _entry_datetime(
     return datetime.fromtimestamp(calendar.timegm(value), tz=UTC)
 
 
-def _clean_rss_description(raw_description: Any, title: str | None) -> tuple[str | None, str | None]:
+def _clean_rss_description(
+    raw_description: Any, title: str | None
+) -> tuple[str | None, str | None]:
     if not isinstance(raw_description, str) or not raw_description.strip():
         return None, None
     soup = BeautifulSoup(raw_description, "html.parser")
@@ -88,7 +92,9 @@ def _clean_rss_content(raw_content: Any, title: str | None) -> str | None:
     return "\n\n".join(paragraphs) if paragraphs else None
 
 
-def _extract_rss_image(entry: Any, extracted_img_url: str | None, base_url: str | None) -> str | None:
+def _extract_rss_image(
+    entry: Any, extracted_img_url: str | None, base_url: str | None
+) -> str | None:
     candidate_urls: list[str] = []
     if isinstance(extracted_img_url, str) and extracted_img_url.strip():
         candidate_urls.append(extracted_img_url.strip())

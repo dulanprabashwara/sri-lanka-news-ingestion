@@ -1,3 +1,5 @@
+"""Console entry points that assemble dependencies and run a selected publisher."""
+
 import logging
 
 from ingestion.backend import BackendIngestionClient
@@ -77,38 +79,56 @@ def _run(source_slug: str) -> int:
 
 
 def main() -> int:
+    """Run one Daily Mirror ingestion cycle."""
+
     return _run("daily-mirror")
 
 
 def main_newsfirst() -> int:
+    """Run one NewsFirst ingestion cycle."""
+
     return _run("newsfirst")
 
 
 def main_hiru_news_sinhala() -> int:
+    """Run one Hiru News Sinhala ingestion cycle."""
+
     return _run("hiru-news-sinhala")
 
 
 def main_lakbima_news() -> int:
+    """Run one Lakbima News ingestion cycle."""
+
     return _run("lakbima-news")
 
 
 def main_newswire() -> int:
+    """Run one Newswire ingestion cycle."""
+
     return _run("newswire")
 
 
 def main_the_island() -> int:
+    """Run one The Island ingestion cycle."""
+
     return _run("the-island")
 
 
 def main_divaina() -> int:
+    """Run one Divaina ingestion cycle."""
+
     return _run("divaina")
 
 
 def main_lankadeepa() -> int:
+    """Run one Lankadeepa ingestion cycle."""
+
     return _run("lankadeepa")
 
 
 def main_scheduler() -> int:
+    """Start the long-running scheduler and manual-trigger worker."""
+
     settings = Settings()  # type: ignore[call-arg]
     configure_logging(settings.log_level)
 

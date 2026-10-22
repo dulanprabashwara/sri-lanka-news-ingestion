@@ -1,3 +1,6 @@
+"""Typed failures raised when the Spring Boot ingestion API cannot satisfy a request."""
+
+
 class BackendClientError(RuntimeError):
     """Base error for expected internal backend submission failures."""
 

@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize Sinhala Lankadeepa articles."""
+
 import html
 import re
 from collections.abc import Callable, Sequence
@@ -39,6 +41,8 @@ class LankadeepaExtractionError(PublisherExtractionError):
 
 
 class LankadeepaAdapter(SourceAdapter):
+    """Discover recent Lankadeepa links and extract normalized Sinhala reports."""
+
     SOURCE_SLUG = "lankadeepa"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTOR = "header h1, h1.post-title, h1"
@@ -65,9 +69,13 @@ class LankadeepaAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Lankadeepa."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Discover and deduplicate article links from Lankadeepa's latest page."""
+
         discovered_at = self._now()
         response = self._fetcher.fetch(self._homepage_url, accepted_content_types={"text/html"})
         document = parse_html(response.text)
@@ -108,6 +116,8 @@ class LankadeepaAdapter(SourceAdapter):
         return tuple(candidates)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch a Lankadeepa page and extract its validated Sinhala fields."""
+
         response = self._fetcher.fetch(str(candidate.url), accepted_content_types={"text/html"})
         document = parse_html(response.text)
         data = news_article_data(document)
@@ -187,6 +197,8 @@ class LankadeepaAdapter(SourceAdapter):
         return None
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Lankadeepa fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:
@@ -290,6 +302,8 @@ class LankadeepaAdapter(SourceAdapter):
         page_url: str,
     ) -> str:
         def extract_article_id(url: str) -> str | None:
+            """Read the stable numeric article identifier from a URL when present."""
+
             try:
                 path = urlsplit(url).path
                 if "-" in path:

@@ -1,3 +1,5 @@
+"""Validated discovery, extraction, and normalized article data contracts."""
+
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated
@@ -23,12 +25,16 @@ SourceSlug = Annotated[
 
 
 class Language(StrEnum):
+    """Languages currently accepted by the backend article domain."""
+
     ENGLISH = "en"
     SINHALA = "si"
     TAMIL = "ta"
 
 
 class ArticleCategory(StrEnum):
+    """Optional normalized news categories shared with the backend."""
+
     POLITICS = "POLITICS"
     BUSINESS = "BUSINESS"
     SPORTS = "SPORTS"
@@ -42,10 +48,14 @@ class ArticleCategory(StrEnum):
 
 
 class IngestionModel(BaseModel):
+    """Strict immutable base model that rejects unexpected publisher data."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class ImageMetadata(IngestionModel):
+    """Optional lead-image metadata; the ingestion service does not download the image."""
+
     url: AnyHttpUrl
     alt_text: str | None = Field(default=None, max_length=500)
     width: int | None = Field(default=None, gt=0)
@@ -53,6 +63,8 @@ class ImageMetadata(IngestionModel):
 
 
 class DiscoveryCandidate(IngestionModel):
+    """Lightweight article reference discovered from a feed or listing page."""
+
     source_slug: SourceSlug
     url: AnyHttpUrl
     discovered_at: datetime
@@ -66,6 +78,8 @@ class DiscoveryCandidate(IngestionModel):
     @field_validator("discovered_at", "published_at")
     @classmethod
     def require_aware_utc(cls, value: datetime | None) -> datetime | None:
+        """Reject naive dates and normalize accepted values to UTC."""
+
         if value is None:
             return None
         if value.tzinfo is None or value.utcoffset() is None:
@@ -74,6 +88,8 @@ class DiscoveryCandidate(IngestionModel):
 
 
 class ExtractedArticle(IngestionModel):
+    """Validated article fields extracted from one publisher page."""
+
     source_slug: SourceSlug
     title: str = Field(min_length=1, max_length=1_000)
     authors: tuple[str, ...] = ()
@@ -90,6 +106,8 @@ class ExtractedArticle(IngestionModel):
     @field_validator("title", "article_text")
     @classmethod
     def strip_required_text(cls, value: str) -> str:
+        """Trim required text and reject values containing only whitespace."""
+
         stripped = value.strip()
         if not stripped:
             raise ValueError("text must not be blank")
@@ -98,6 +116,8 @@ class ExtractedArticle(IngestionModel):
     @field_validator("authors")
     @classmethod
     def normalize_authors(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        """Normalize whitespace and remove repeated author names in stable order."""
+
         authors: list[str] = []
         for author in value:
             normalized = " ".join(author.split())
@@ -108,6 +128,8 @@ class ExtractedArticle(IngestionModel):
     @field_validator("published_at", "discovered_at")
     @classmethod
     def normalize_timestamp(cls, value: datetime) -> datetime:
+        """Require timezone-aware article timestamps and store them as UTC."""
+
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("timestamps must include a timezone")
         return value.astimezone(UTC)

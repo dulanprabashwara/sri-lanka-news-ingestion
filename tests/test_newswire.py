@@ -1,3 +1,5 @@
+"""Regression tests for Newswire RSS discovery and article extraction."""
+
 from datetime import UTC, datetime
 
 import httpx

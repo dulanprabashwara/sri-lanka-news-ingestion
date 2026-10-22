@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize English Daily Mirror articles."""
+
 import html
 import json
 from collections.abc import Callable, Sequence
@@ -34,6 +36,8 @@ class DailyMirrorExtractionError(PublisherExtractionError):
 
 
 class DailyMirrorAdapter(SourceAdapter):
+    """Use Daily Mirror RSS for discovery and article HTML for complete content."""
+
     SOURCE_SLUG = "daily-mirror"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTOR = "h1.inner_header.mmfpmf, h1.inner_header"
@@ -66,9 +70,13 @@ class DailyMirrorAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Daily Mirror."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Convert recent Daily Mirror feed entries into discovery candidates."""
+
         response = self._fetcher.fetch(
             self._feed_url,
             accepted_content_types=self.ACCEPTED_FEED_TYPES,
@@ -82,6 +90,8 @@ class DailyMirrorAdapter(SourceAdapter):
         )
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch a Daily Mirror page and extract its validated article fields."""
+
         try:
             response = self._fetcher.fetch(
                 str(candidate.url),
@@ -145,11 +155,15 @@ class DailyMirrorAdapter(SourceAdapter):
         if not image_url:
             return None
         try:
-            return ImageMetadata.model_validate({"url": str(image_url)}, context={"page_url": page_url})
+            return ImageMetadata.model_validate(
+                {"url": str(image_url)}, context={"page_url": page_url}
+            )
         except ValidationError:
             return None
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Daily Mirror fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _news_article_data(self, document: BeautifulSoup) -> dict[str, Any]:

@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize Sinhala Hiru News articles."""
+
 import html
 import re
 import xml.etree.ElementTree as ET
@@ -34,6 +36,8 @@ class HiruNewsSinhalaExtractionError(PublisherExtractionError):
 
 
 class HiruNewsSinhalaAdapter(SourceAdapter):
+    """Discover Hiru links from public pages/sitemaps and extract Sinhala articles."""
+
     SOURCE_SLUG = "hiru-news-sinhala"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     ARTICLE_PATH = re.compile(r"^/(?:[a-z-]+/)?\d+/[^/?#]+/?$")
@@ -66,9 +70,13 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Hiru News Sinhala."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Discover valid Hiru article links from supported public listing sources."""
+
         try:
             response = self._fetcher.fetch(
                 self._listing_url, accepted_content_types=self.ACCEPTED_TYPES
@@ -215,6 +223,8 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
         return title if 0 < len(title) <= 1_000 else None
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch a Hiru page and extract its validated Sinhala article fields."""
+
         response = self._fetcher.fetch(
             str(candidate.url), accepted_content_types=self.ACCEPTED_TYPES
         )
@@ -247,6 +257,8 @@ class HiruNewsSinhalaAdapter(SourceAdapter):
             raise HiruNewsSinhalaExtractionError("Hiru News article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Hiru fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _title(self, document: BeautifulSoup, data: dict[str, Any]) -> str:

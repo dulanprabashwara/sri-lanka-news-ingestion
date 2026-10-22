@@ -1,3 +1,5 @@
+"""Unit tests for safe URL canonicalization and tracking-parameter removal."""
+
 import pytest
 
 from ingestion.normalization import UrlNormalizationError, canonicalize_url

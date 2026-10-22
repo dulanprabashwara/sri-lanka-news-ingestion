@@ -1,3 +1,5 @@
+"""Regression tests for NewsFirst discovery, extraction, and polite rate limiting."""
+
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from pathlib import Path

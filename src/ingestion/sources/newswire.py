@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize English Newswire articles."""
+
 import html
 import json
 from collections.abc import Callable, Sequence
@@ -33,6 +35,8 @@ class NewswireExtractionError(PublisherExtractionError):
 
 
 class NewswireAdapter(SourceAdapter):
+    """Use the Newswire feed for discovery and article pages for complete content."""
+
     SOURCE_SLUG = "newswire"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTOR = "h1.entry-title, h1.post-title, h1"
@@ -64,9 +68,13 @@ class NewswireAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Newswire."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Convert recent Newswire feed entries into discovery candidates."""
+
         response = self._fetcher.fetch(
             self._feed_url,
             accepted_content_types=self.ACCEPTED_FEED_TYPES,
@@ -80,6 +88,8 @@ class NewswireAdapter(SourceAdapter):
         )
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch a Newswire page and extract its validated English article fields."""
+
         try:
             response = self._fetcher.fetch(
                 str(candidate.url),
@@ -125,6 +135,8 @@ class NewswireAdapter(SourceAdapter):
             raise NewswireExtractionError("Newswire article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Newswire fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _news_article_data(self, document: BeautifulSoup) -> dict[str, Any]:

@@ -1,3 +1,5 @@
+"""Regression tests for Lakbima RSS discovery and Sinhala article extraction."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 

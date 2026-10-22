@@ -1,3 +1,5 @@
+"""Validate normalized article fields, language rules, URLs, and UTC timestamps."""
+
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest

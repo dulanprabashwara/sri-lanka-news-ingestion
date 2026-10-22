@@ -1,3 +1,5 @@
+"""Unit tests for publisher-neutral HTML parsing and field extraction helpers."""
+
 from pathlib import Path
 
 import pytest

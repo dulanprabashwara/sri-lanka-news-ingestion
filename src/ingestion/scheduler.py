@@ -1,3 +1,5 @@
+"""Schedule source runs and coordinate leases, heartbeats, metrics, and manual triggers."""
+
 import contextlib
 import logging
 import threading
@@ -69,6 +71,8 @@ def run_scheduled_job(
     trigger_type: IngestionTriggerType = IngestionTriggerType.SCHEDULED,
     trigger_id: str | None = None,
 ) -> None:
+    """Measure and execute one leased source cycle without hiding failures."""
+
     logger = logging.getLogger(f"ingestion.scheduler.{source_slug}")
     started_at = time.perf_counter()
     metrics = _CycleMetrics()
@@ -330,6 +334,8 @@ def start_scheduler(
     adapter_factory: Callable[[str, HttpFetcher, Settings], SourceAdapter],
     settings: Settings,
 ) -> None:
+    """Start recurring enabled-source jobs plus backend config and trigger workers."""
+
     logger = logging.getLogger("ingestion.scheduler")
 
     if not settings.scheduler_enabled:

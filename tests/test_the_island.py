@@ -1,3 +1,5 @@
+"""Regression tests for The Island feeds, challenge pages, and title fallbacks."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 

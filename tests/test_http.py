@@ -1,3 +1,5 @@
+"""Unit tests for HTTP response validation and typed network failure handling."""
+
 import httpx
 import pytest
 from pydantic import SecretStr

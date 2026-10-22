@@ -1,3 +1,5 @@
+"""Contract tests showing the required behavior of a publisher source adapter."""
+
 from collections.abc import Sequence
 from datetime import UTC, datetime
 

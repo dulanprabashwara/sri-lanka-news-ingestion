@@ -1,3 +1,5 @@
+"""Orchestrate one source run from discovery through backend submission."""
+
 import logging
 import threading
 from dataclasses import dataclass
@@ -13,11 +15,18 @@ from ingestion.sources import PublisherExtractionError, SourceAdapter
 
 
 class ArticleSubmitter(Protocol):
-    def submit(self, article: NormalizedArticle) -> SubmissionResult: ...
+    """Minimal backend port required by the source-run orchestrator."""
+
+    def submit(self, article: NormalizedArticle) -> SubmissionResult:
+        """Send one normalized article to persistence and return its outcome."""
+
+        ...
 
 
 @dataclass(frozen=True, slots=True)
 class RunSummary:
+    """Counters describing the outcome of one publisher run."""
+
     discovered: int
     processed: int
     created: int
@@ -33,6 +42,8 @@ def run_once(
     logger: logging.Logger | None = None,
     abort_event: threading.Event | None = None,
 ) -> RunSummary:
+    """Discover, extract, normalize, and submit a bounded number of articles."""
+
     run_logger = logger or logging.getLogger(__name__)
     try:
         candidates = tuple(adapter.discover_recent())

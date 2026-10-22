@@ -1,3 +1,5 @@
+"""Verify backend payloads, authentication, responses, and ingestion coordination calls."""
+
 import json
 from datetime import UTC, datetime
 

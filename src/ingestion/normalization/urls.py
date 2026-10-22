@@ -1,3 +1,5 @@
+"""Canonicalize publisher URLs while conservatively removing tracking parameters."""
+
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 _TRACKING_PARAMETERS = {
@@ -20,6 +22,8 @@ def _is_tracking_parameter(name: str) -> bool:
 
 
 def canonicalize_url(url: str, *, base_url: str | None = None) -> str:
+    """Return an absolute HTTP(S) URL without fragments or known tracking parameters."""
+
     """Apply conservative URL canonicalization suitable for article identity."""
 
     candidate = urljoin(base_url, url) if base_url else url

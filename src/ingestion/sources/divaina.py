@@ -1,3 +1,5 @@
+"""Discover, extract, and normalize Sinhala Divaina articles."""
+
 import html
 import json
 from collections.abc import Callable, Sequence
@@ -32,6 +34,8 @@ class DivainaExtractionError(PublisherExtractionError):
 
 
 class DivainaAdapter(SourceAdapter):
+    """Use the Divaina feed for discovery and publisher HTML for Sinhala content."""
+
     SOURCE_SLUG = "divaina"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTOR = "h1.entry-title"
@@ -59,9 +63,13 @@ class DivainaAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for Divaina."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Convert recent Divaina feed entries into discovery candidates."""
+
         response = self._fetcher.fetch(
             self._feed_url,
             accepted_content_types=self.ACCEPTED_FEED_TYPES,
@@ -75,6 +83,8 @@ class DivainaAdapter(SourceAdapter):
         )
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch a Divaina page and extract its validated Sinhala article fields."""
+
         try:
             response = self._fetcher.fetch(
                 str(candidate.url),
@@ -102,7 +112,11 @@ class DivainaAdapter(SourceAdapter):
             published_at = candidate.published_at or candidate.discovered_at or self._now()
             canonical_url = str(candidate.url)
             authors = ()
-            summary = candidate.description if candidate.description and candidate.description != candidate.title else None
+            summary = (
+                candidate.description
+                if candidate.description and candidate.description != candidate.title
+                else None
+            )
             image = None
 
         try:
@@ -125,6 +139,8 @@ class DivainaAdapter(SourceAdapter):
             raise DivainaExtractionError("Divaina article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Divaina fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _news_article_data(self, document: BeautifulSoup) -> dict[str, Any]:

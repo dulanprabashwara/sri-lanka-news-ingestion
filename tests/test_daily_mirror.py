@@ -1,3 +1,5 @@
+"""Regression tests for Daily Mirror feed discovery and article extraction."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -144,7 +146,10 @@ def test_falls_back_to_rss_content_when_html_fetch_blocked() -> None:
     assert normalized.published_at == published_at
     assert str(normalized.canonical_url) == ARTICLE_URL
     assert normalized.original_language.value == "en"
-    assert normalized.article_text == "Full article paragraph 1 from RSS feed.\n\nFull article paragraph 2."
+    assert (
+        normalized.article_text
+        == "Full article paragraph 1 from RSS feed.\n\nFull article paragraph 2."
+    )
     assert normalized.summary == "Representative summary from RSS feed."
     assert normalized.image is not None
     assert str(normalized.image.url) == "https://cdn.example.com/daily-mirror-fixture.jpg"

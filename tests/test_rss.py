@@ -1,3 +1,5 @@
+"""Unit tests for RSS parsing, metadata cleanup, dates, images, and malformed feeds."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -67,7 +69,10 @@ def test_parses_feed_with_rich_content_description_and_image() -> None:
     assert len(candidates) == 1
     candidate = candidates[0]
     assert candidate.title == "CPC keeps fuel prices steady"
-    assert candidate.description == "The Ceylon Petroleum Corporation has decided to keep fuel prices unchanged."
+    assert (
+        candidate.description
+        == "The Ceylon Petroleum Corporation has decided to keep fuel prices unchanged."
+    )
     assert candidate.content == (
         "The Ceylon Petroleum Corporation has decided to keep fuel prices unchanged.\n\n"
         "Officials stated the formula was reviewed on Saturday."

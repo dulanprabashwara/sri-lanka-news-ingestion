@@ -1,3 +1,5 @@
+"""Discover, rate-limit, extract, and normalize English NewsFirst articles."""
+
 import html
 import logging
 import random
@@ -40,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 
 class NewsFirstAdapter(SourceAdapter):
+    """Discover NewsFirst reports with publisher-specific pacing and bounded retries."""
+
     SOURCE_SLUG = "newsfirst"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     ARTICLE_PATH = re.compile(r"^/\d{4}/\d{2}/\d{2}/[^/?#]+$")
@@ -77,9 +81,13 @@ class NewsFirstAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for NewsFirst."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Fetch the latest listing politely and return unique article candidates."""
+
         response = self._fetch_with_rate_limit(self._listing_url, phase="discovery")
         document = parse_html(response.text)
         discovered_at = self._now()
@@ -110,6 +118,8 @@ class NewsFirstAdapter(SourceAdapter):
         return tuple(candidates)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Fetch with bounded rate-limit retries and extract an English report."""
+
         response = self._fetch_with_rate_limit(str(candidate.url), phase="article")
         document = parse_html(response.text)
         data = news_article_data(document)
@@ -136,6 +146,8 @@ class NewsFirstAdapter(SourceAdapter):
             raise NewsFirstExtractionError("NewsFirst article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted NewsFirst fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _fetch_with_rate_limit(

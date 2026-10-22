@@ -1,3 +1,5 @@
+"""Verify environment configuration defaults, validation, and secret handling."""
+
 import pytest
 from pydantic import SecretStr, ValidationError
 

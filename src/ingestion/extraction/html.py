@@ -1,3 +1,5 @@
+"""Publisher-neutral BeautifulSoup helpers for reading common article HTML fields."""
+
 from bs4 import BeautifulSoup, Tag
 
 from ingestion.normalization import UrlNormalizationError, canonicalize_url
@@ -8,6 +10,8 @@ class HtmlExtractionError(ValueError):
 
 
 def parse_html(html: str | bytes) -> BeautifulSoup:
+    """Parse publisher markup with Python's deterministic built-in HTML parser."""
+
     return BeautifulSoup(html, "html.parser")
 
 
@@ -18,6 +22,8 @@ def extract_text(
     required: bool = True,
     separator: str = " ",
 ) -> str | None:
+    """Return normalized text from one selector or raise when it is required."""
+
     element = document.select_one(selector)
     if element is None:
         if required:
@@ -37,6 +43,8 @@ def extract_texts(
     *,
     separator: str = " ",
 ) -> tuple[str, ...]:
+    """Return normalized non-empty text from every matching element."""
+
     return tuple(
         normalized
         for element in document.select(selector)
@@ -52,6 +60,8 @@ def extract_attribute(
     *,
     required: bool = True,
 ) -> str | None:
+    """Read and normalize an attribute from one selected HTML element."""
+
     element = document.select_one(selector)
     value = element.get(attribute) if element is not None else None
     if isinstance(value, list):
@@ -66,6 +76,8 @@ def extract_attribute(
 
 
 def extract_canonical_url(document: BeautifulSoup | Tag, *, page_url: str) -> str:
+    """Resolve and validate the page's canonical link against its fetched URL."""
+
     href = extract_attribute(document, "link[rel~='canonical']", "href")
     assert href is not None
     try:

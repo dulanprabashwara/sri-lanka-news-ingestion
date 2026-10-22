@@ -1,3 +1,5 @@
+"""Verify scheduler leases, heartbeats, triggers, metrics, and failure isolation."""
+
 from unittest.mock import MagicMock, patch
 
 from pydantic import SecretStr

@@ -1,3 +1,5 @@
+"""Shared metadata, author, summary, image, and paragraph helpers for source adapters."""
+
 import html
 import json
 from typing import Any
@@ -10,6 +12,8 @@ from ingestion.models import ImageMetadata
 
 
 def news_article_data(document: BeautifulSoup) -> dict[str, Any]:
+    """Return the first Article/NewsArticle JSON-LD object found in a page."""
+
     for script in document.find_all("script", attrs={"type": "application/ld+json"}):
         raw = script.string or script.get_text()
         if not raw.strip():
@@ -35,6 +39,8 @@ def news_article_data(document: BeautifulSoup) -> dict[str, Any]:
 
 
 def author_names(value: Any) -> tuple[str, ...]:
+    """Normalize JSON-LD author values into unique display names."""
+
     items = value if isinstance(value, list) else [value]
     names: list[str] = []
     for item in items:
@@ -51,6 +57,8 @@ def image_metadata(
     data: dict[str, Any],
     page_url: str,
 ) -> ImageMetadata | None:
+    """Build validated lead-image metadata from JSON-LD or Open Graph data."""
+
     candidate: Any = data.get("image")
     if isinstance(candidate, dict):
         candidate = candidate.get("url")
@@ -74,6 +82,8 @@ def article_summary(
     data: dict[str, Any],
     ignore_phrases: tuple[str, ...] = (),
 ) -> str | None:
+    """Choose and clean a publisher summary without manufacturing new text."""
+
     title_text = ""
     if document.title and document.title.string:
         title_text = document.title.string.strip()
@@ -107,4 +117,6 @@ def article_summary(
 
 
 def normalized_paragraphs(values: tuple[str, ...]) -> str:
+    """Join cleaned article paragraphs while preserving paragraph boundaries."""
+
     return "\n\n".join(value for value in values if value)

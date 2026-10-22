@@ -1,3 +1,5 @@
+"""Define the contract every publisher-specific source adapter must implement."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 

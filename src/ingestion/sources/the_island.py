@@ -1,3 +1,5 @@
+"""Discover, challenge-detect, extract, and normalize English Island articles."""
+
 import html
 import json
 import logging
@@ -50,6 +52,8 @@ class _FeedMetadata:
 
 
 class TheIslandAdapter(SourceAdapter):
+    """Combine Island feed metadata with guarded article-page extraction."""
+
     SOURCE_SLUG = "the-island"
     SOURCE_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="Asia/Colombo")
     TITLE_SELECTORS = (
@@ -122,9 +126,13 @@ class TheIslandAdapter(SourceAdapter):
 
     @property
     def source_slug(self) -> str:
+        """Return the backend identifier for The Island."""
+
         return self.SOURCE_SLUG
 
     def discover_recent(self) -> Sequence[DiscoveryCandidate]:
+        """Convert rich Island feed entries into discovery candidates and metadata."""
+
         response = self._fetcher.fetch(
             self._feed_url,
             accepted_content_types=self.ACCEPTED_FEED_TYPES,
@@ -162,6 +170,8 @@ class TheIslandAdapter(SourceAdapter):
         return tuple(normalized)
 
     def extract_article(self, candidate: DiscoveryCandidate) -> ExtractedArticle:
+        """Extract an Island report, falling back to usable feed content when needed."""
+
         request_url = self._canonical_island_url(str(candidate.url))
         try:
             response = self._fetcher.fetch(
@@ -232,6 +242,8 @@ class TheIslandAdapter(SourceAdapter):
             raise TheIslandExtractionError("The Island article data is invalid.") from error
 
     def normalize(self, article: ExtractedArticle) -> NormalizedArticle:
+        """Convert extracted Island fields to the shared submission model."""
+
         return NormalizedArticle.model_validate(article.model_dump())
 
     def _feed_fallback(

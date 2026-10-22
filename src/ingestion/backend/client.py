@@ -1,3 +1,5 @@
+"""HTTP client for article submission and ingestion-run coordination with the backend."""
+
 from types import TracebackType
 from typing import Any
 
@@ -18,6 +20,8 @@ from ingestion.models import NormalizedArticle
 
 
 class BackendIngestionClient:
+    """Authenticated synchronous client for the backend's internal ingestion API."""
+
     ENDPOINT = "/api/internal/v1/articles"
     RUNS_ENDPOINT = "/api/internal/v1/ingestion-runs"
     CONFIG_ENDPOINT = "/api/internal/v1/ingestion/sources"
@@ -54,9 +58,13 @@ class BackendIngestionClient:
         self.close()
 
     def close(self) -> None:
+        """Release the client's pooled backend connections."""
+
         self._client.close()
 
     def submit(self, article: NormalizedArticle) -> SubmissionResult:
+        """Submit one normalized article and parse its created/duplicate outcome."""
+
         try:
             response = self._client.post(self.ENDPOINT, json=self._payload(article))
         except (httpx.TimeoutException, httpx.NetworkError) as error:
@@ -86,6 +94,8 @@ class BackendIngestionClient:
         scheduled_for: str,
         worker_id: str,
     ) -> ClaimResponse:
+        """Attempt to acquire the backend lease for one source ingestion run."""
+
         payload = {
             "sourceSlug": source_slug,
             "triggerType": trigger_type.value,
@@ -105,6 +115,8 @@ class BackendIngestionClient:
             raise BackendProtocolError("Backend returned an invalid claim response.") from error
 
     def heartbeat(self, run_id: str) -> str:
+        """Extend an active run lease and return its new expiration timestamp."""
+
         try:
             response = self._client.post(f"{self.RUNS_ENDPOINT}/{run_id}/heartbeat")
         except (httpx.TimeoutException, httpx.NetworkError) as error:
@@ -120,6 +132,8 @@ class BackendIngestionClient:
     def complete(
         self, run_id: str, discovered: int, submitted: int, succeeded: int, failed: int
     ) -> None:
+        """Report successful run completion and its final counters."""
+
         payload = {
             "articlesDiscovered": discovered,
             "articlesSubmitted": submitted,
@@ -143,6 +157,8 @@ class BackendIngestionClient:
         succeeded: int,
         failed: int,
     ) -> None:
+        """Report a failed run with a safe error summary and final counters."""
+
         payload = {
             "errorCode": error_code,
             "errorMessage": error_message,
@@ -159,6 +175,8 @@ class BackendIngestionClient:
         self._check_response(response)
 
     def get_sources(self) -> list[dict[str, Any]]:
+        """Load backend-controlled source scheduling configuration."""
+
         try:
             response = self._client.get(self.CONFIG_ENDPOINT)
         except (httpx.TimeoutException, httpx.NetworkError) as error:
@@ -169,6 +187,8 @@ class BackendIngestionClient:
         return data
 
     def claim_manual_trigger(self, worker_id: str) -> dict[str, Any]:
+        """Claim the next pending admin-triggered ingestion request, if one exists."""
+
         payload = {"workerId": worker_id}
         try:
             response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/claim", json=payload)
@@ -180,6 +200,8 @@ class BackendIngestionClient:
         return data
 
     def trigger_run_started(self, trigger_id: str, run_id: str) -> None:
+        """Associate a claimed manual trigger with its newly created run."""
+
         try:
             response = self._client.post(
                 f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/run-started",
@@ -190,6 +212,8 @@ class BackendIngestionClient:
         self._check_response(response)
 
     def trigger_retry(self, trigger_id: str) -> None:
+        """Return a transiently blocked manual trigger to the retry state."""
+
         try:
             response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/retry")
         except (httpx.TimeoutException, httpx.NetworkError) as error:
@@ -197,6 +221,8 @@ class BackendIngestionClient:
         self._check_response(response)
 
     def trigger_complete(self, trigger_id: str) -> None:
+        """Mark a manual trigger as successfully completed."""
+
         try:
             response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/complete")
         except (httpx.TimeoutException, httpx.NetworkError) as error:
@@ -204,6 +230,8 @@ class BackendIngestionClient:
         self._check_response(response)
 
     def trigger_fail(self, trigger_id: str) -> None:
+        """Mark a manual trigger as permanently failed."""
+
         try:
             response = self._client.post(f"{self.TRIGGERS_ENDPOINT}/{trigger_id}/fail")
         except (httpx.TimeoutException, httpx.NetworkError) as error:

@@ -1,3 +1,5 @@
+"""Domain errors that translate low-level HTTP failures into actionable fetch failures."""
+
 from collections.abc import Mapping
 
 
@@ -18,6 +20,8 @@ class NetworkError(FetchError):
 
 
 class HttpStatusError(FetchError):
+    """Raised when a publisher responds with an unsuccessful HTTP status."""
+
     def __init__(
         self,
         status_code: int,
@@ -31,6 +35,8 @@ class HttpStatusError(FetchError):
 
 
 class InvalidContentTypeError(FetchError):
+    """Raised when a response is not one of the content types requested by a caller."""
+
     def __init__(self, content_type: str, url: str) -> None:
         super().__init__(f"Unexpected content type {content_type!r} for {url}")
         self.content_type = content_type

@@ -1,3 +1,5 @@
+"""Load and validate all ``INGESTION_*`` runtime configuration from the environment."""
+
 from typing import Literal
 
 from pydantic import AnyHttpUrl, Field, SecretStr
@@ -15,6 +17,7 @@ class Settings(BaseSettings):
         validate_default=True,
     )
 
+    # Shared network policy used for publisher and backend requests.
     http_timeout_seconds: float = Field(default=15.0, gt=0, le=120)
     http_max_redirects: int = Field(default=5, ge=0, le=20)
     http_user_agent: str = Field(
@@ -25,8 +28,11 @@ class Settings(BaseSettings):
         min_length=10,
     )
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    # Protected Spring Boot ingestion boundary; the secret is never logged.
     backend_base_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8080")
     api_key: SecretStr
+
+    # Publisher discovery endpoints. Adapters own all publisher-specific parsing.
     daily_mirror_feed_url: AnyHttpUrl = AnyHttpUrl(
         "https://www.dailymirror.lk/rss/breaking_news/108"
     )
@@ -39,6 +45,7 @@ class Settings(BaseSettings):
     the_island_feed_url: AnyHttpUrl = AnyHttpUrl("http://island.lk/feed/")
     divaina_feed_url: AnyHttpUrl = AnyHttpUrl("https://www.divaina.lk/feed")
     lankadeepa_listing_url: AnyHttpUrl = AnyHttpUrl("https://www.lankadeepa.lk/latest-news/1")
+    # Per-run workload and scheduler/lease coordination limits.
     run_limit: int = Field(default=3, ge=1, le=20)
     scheduler_enabled: bool = False
     scheduler_interval_minutes: int = Field(default=10, ge=5)

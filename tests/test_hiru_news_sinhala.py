@@ -1,3 +1,5 @@
+"""Regression tests for Hiru News listing discovery and Sinhala extraction."""
+
 from datetime import UTC, datetime
 from pathlib import Path
 
